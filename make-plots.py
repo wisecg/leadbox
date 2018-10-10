@@ -36,7 +36,7 @@ def energy_1d():
     runList = [13] # weekend 2
     weekend = 2
 
-    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
+    fileDir = "./data"
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
