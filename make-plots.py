@@ -188,15 +188,16 @@ def psa_cut():
         ch.Add(fName)
     print("Found %d entries" % (ch.GetEntries()))
 
-    chan = 1
-
     n = ch.Draw("Energy:EnergyShort","Channel==%d" % (chan),"goff")
     ene, eshort = ch.GetV1(), ch.GetV2()
     ene = np.asarray([ene[i] for i in range(n)])
     eshort = np.asarray([eshort[i] for i in range(n)])
 
-    # fit line where we don't have alphas in the spectrum
-    fit_lo, fit_hi = 1000, 2500
+    psa_cut(ene, eshort, 1)
+
+
+def psa_cut(ene, eshort, chan = None, scale = 1):
+    fit_lo, fit_hi = 1000, 2500 # fit line where we don't have alphas in the spectrum
 
     def linear(x, m, b):
         return m*x + b
@@ -230,9 +231,9 @@ def psa_cut():
     fig2 = plt.figure(figsize=(10,6),facecolor='w')
     plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
 
-    hEne, xEne = np.histogram(ene, bins=1000, range=(0,20000))
-    hEneG, xEneG = np.histogram(ene[gammas], bins=1000, range=(0,20000))
-    hEneA, xEneA = np.histogram(ene[alphas], bins=1000, range=(0,20000))
+    hEne, xEne = np.histogram(ene, bins=1000 * scale, range=(0,20000 * scale))
+    hEneG, xEneG = np.histogram(ene[gammas], bins=1000 * scale, range=(0,20000 * scale))
+    hEneA, xEneA = np.histogram(ene[alphas], bins=1000 * scale, range=(0,20000 * scale))
 
     # Plot the histograms for the alpha and gamma events
     fig3 = plt.figure(figsize=(10,6),facecolor='w')
@@ -249,8 +250,29 @@ def psa_cut():
 
 def calibrate_energy():
     e_peak = 1460.99999 # TODO: look this up from NNDC
+    runList = [13]
+    chan = 3
 
+    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
+    ch = TChain("Data_F")
+    for run in runList:
+        fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+        ch.Add(fName)
+    print("Found %d entries" % (ch.GetEntries()))
 
+    n = ch.Draw("Energy:EnergyShort", "Channel==%d" % (chan), "goff")
+    ene, eshort = ch.GetV1(), ch.GetV2()
+    ene = np.asarray([ene[i] for i in range(n)])
+    eshort = np.asarray([eshort[i] for i in range(n)])
+
+    # Find our peak and graph by sclaing with peak
+    max = np.where(max(ene))
+    scale = e_peak / max
+    fig = plt.figure(figsize=(10,6),facecolor='w')
+    hSene, xSene = plt.histogram(ene, bins = 1000, range = (10 * scale, 20000 * scale))
+
+    # Perform a PSA cut on our data
+    psa_cut(ene, eshort, 3, scale)
 
 
 if __name__=="__main__":
