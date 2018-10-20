@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import numpy as np
-from array import array
 from ROOT import TFile, TChain
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -17,32 +16,15 @@ def main():
     # branch: Flags                    17481
     # compassF_run_1.root
     """
-    energy_1d()
+    # energy_1d()
     # energy_2d()
     # plot_waveforms()
     # psa_cut()
-    # calibrate_energy()
+    calibrate_energy()
 
     # TODO:
     # - figure out parameters of Energy and EnergyShort
     # - exact calculation of livetime for each file
-
-
-def get_runtime(file_name, verbose=False):
-
-    tf = TFile(file_name)
-    tt = tf.Get("Data_F")
-    n_ent = tt.GetEntries()
-    ts = array('l',[0])
-    tt.SetBranchAddress("Timestamp",ts)
-    tt.GetEntry(0)
-    ts_start = ts[0]/1e12 # caen's timestamp is evidently in picoseconds ... ugh
-    tt.GetEntry(n_ent - 1)
-    ts_stop = ts[0]/1e12
-    runtime = (ts_stop - ts_start)/3600 # sec to hours
-    if verbose:
-        print("Start:{}  Stop:{}  Runtime (hrs):{}".format(ts_start, ts_stop, runtime))
-    return runtime
 
 
 def energy_1d():
@@ -50,20 +32,16 @@ def energy_1d():
     # (be sure to edit filenames)
 
     # runList = [1,3,4,5] # weekend 1
-    runList = [1,3]
-    # runList = [13] # weekend 2
-    weekend = 1
+    # runList = [1,3]
+    runList = [13] # weekend 2
+    weekend = 2
 
-    runtime = 0
-    fileDir = "./data"
+    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
-        runtime += get_runtime(fName)
         ch.Add(fName)
     print("Found %d entries" % (ch.GetEntries()))
-    print("Total runtime (hrs): {:.2f}".format(runtime))
-    exit()
 
     plt.figure(figsize=(10,6),facecolor='w')
 
@@ -175,35 +153,33 @@ def plot_waveforms():
         exit()
 
 
-def psa_cut():
-
-    # runList = [1,3,4,5] # weekend 1
-    runList = [13] # weekend 2
-    # runList = [1,3]
-
-    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
-    ch = TChain("Data_F")
-    for run in runList:
-        fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
-        ch.Add(fName)
-    print("Found %d entries" % (ch.GetEntries()))
-
-    n = ch.Draw("Energy:EnergyShort","Channel==%d" % (chan),"goff")
-    ene, eshort = ch.GetV1(), ch.GetV2()
-    ene = np.asarray([ene[i] for i in range(n)])
-    eshort = np.asarray([eshort[i] for i in range(n)])
-
-    psa_cut(ene, eshort, 1)
-
-
-def psa_cut(ene, eshort, chan = None, scale = 1):
-    fit_lo, fit_hi = 1000, 2500 # fit line where we don't have alphas in the spectrum
+def psa_cut(ene = None, eshort = None, chan = 1, scale = 1):
 
     def linear(x, m, b):
         return m*x + b
 
     def poly(x, a, b, c):
         return a*x**2 + b*x + c
+
+    if ene == None:
+        # runList = [1,3,4,5] # weekend 1
+        runList = [13] # weekend 2
+        # runList = [1,3]
+
+        fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
+        ch = TChain("Data_F")
+        for run in runList:
+        #run = 1
+            fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+            ch.Add(fName)
+        print("Found %d entries" % (ch.GetEntries()))
+
+        n = ch.Draw("Energy:EnergyShort","Channel==%d" % (chan),"goff")
+        ene, eshort = ch.GetV1(), ch.GetV2()
+        ene = np.asarray([ene[i] for i in range(n)])
+        eshort = np.asarray([eshort[i] for i in range(n)])
+
+    fit_lo, fit_hi = 1000, 2500 # fit line where we don't have alphas in the spectrum
 
     init_m = (1421-735)/1000.
     print("init_m",init_m)
@@ -221,7 +197,7 @@ def psa_cut(ene, eshort, chan = None, scale = 1):
     buf = 120 # offset of linear cut
 
     xf = np.arange(fit_lo, fit_hi, 0.1)
-    plt.plot(xf, linear(xf, par[0], par[1] + buf), '-r')
+    plt.plot(xf, linear(xf, par[0] - 0.01, par[1] + buf), '-r')
     # plt.plot(xf, poly(xf, *par), '-r')
 
     # Cut everything below our fit, and then some
@@ -231,9 +207,11 @@ def psa_cut(ene, eshort, chan = None, scale = 1):
     fig2 = plt.figure(figsize=(10,6),facecolor='w')
     plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
 
-    hEne, xEne = np.histogram(ene, bins=1000 * scale, range=(0,20000 * scale))
-    hEneG, xEneG = np.histogram(ene[gammas], bins=1000 * scale, range=(0,20000 * scale))
-    hEneA, xEneA = np.histogram(ene[alphas], bins=1000 * scale, range=(0,20000 * scale))
+    b = int(1000 * scale)
+    r = int(20000 * scale)
+    hEne, xEne = np.histogram(ene, bins=b, range=(0, r))
+    hEneG, xEneG = np.histogram(ene[gammas], bins=b, range=(0, r))
+    hEneA, xEneA = np.histogram(ene[alphas], bins=b, range=(0, r))
 
     # Plot the histograms for the alpha and gamma events
     fig3 = plt.figure(figsize=(10,6),facecolor='w')
@@ -253,7 +231,7 @@ def calibrate_energy():
     runList = [13]
     chan = 3
 
-    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
+    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
@@ -266,10 +244,15 @@ def calibrate_energy():
     eshort = np.asarray([eshort[i] for i in range(n)])
 
     # Find our peak and graph by sclaing with peak
-    max = np.where(max(ene))
-    scale = e_peak / max
+    idx = np.where((ene > 10) & (eshort > 10))
+    mx = np.argmax(ene[idx])
+    scale = e_peak / mx
     fig = plt.figure(figsize=(10,6),facecolor='w')
-    hSene, xSene = plt.histogram(ene, bins = 1000, range = (10 * scale, 20000 * scale))
+    hSene, xSene = np.histogram(ene, bins = 1000, range = (10, 20000))
+
+    plt.semilogy(xSene[1:], hSene, ls='steps', c='r', label="Totals for Channel %d" % chan)
+    plt.axis([10, int(20000 * scale), 0, ene[mx]])
+    plt.axvline(e_peak)
 
     # Perform a PSA cut on our data
     psa_cut(ene, eshort, 3, scale)
