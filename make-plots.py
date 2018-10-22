@@ -231,7 +231,8 @@ def calibrate_energy():
     runList = [13]
     chan = 3
 
-    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
+    # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
+    fileDir = "./data"
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
@@ -243,19 +244,30 @@ def calibrate_energy():
     ene = np.asarray([ene[i] for i in range(n)])
     eshort = np.asarray([eshort[i] for i in range(n)])
 
-    # Find our peak and graph by sclaing with peak
     idx = np.where((ene > 10) & (eshort > 10))
-    mx = np.argmax(ene[idx])
-    scale = e_peak / mx
-    fig = plt.figure(figsize=(10,6),facecolor='w')
-    hSene, xSene = np.histogram(ene, bins = 1000, range = (10, 20000))
 
-    plt.semilogy(xSene[1:], hSene, ls='steps', c='r', label="Totals for Channel %d" % chan)
-    plt.axis([10, int(20000 * scale), 0, ene[mx]])
-    plt.axvline(e_peak)
+    fig = plt.figure(figsize=(10,6),facecolor='w')
+
+    hSene, xSene = np.histogram(ene[idx], bins = 2000, range = (0, 20000))
+
+    mx = xSene[np.argmax(hSene)]
+    scale = e_peak / mx
+
+    xCal = xSene * scale
+    # hCal = hSene / (mass * livetime)
+
+    print("Found calibration constant for bin {}: {:.2f}".format(mx, scale))
+
+    plt.semilogy(xCal[1:], hSene, ls='steps', c='r', label="Totals for Channel %d" % chan)
+    plt.axvline(e_peak, c='b', label="40K: {:.2f}".format(e_peak))
+    plt.legend(loc='best')
+    plt.xlabel("Energy (keV)", ha='right', x=1)
+    plt.ylabel("Counts (arb)")
+    # plt.tight_layout()
+    plt.show()
 
     # Perform a PSA cut on our data
-    psa_cut(ene, eshort, 3, scale)
+    # psa_cut(ene, eshort, 3, scale)
 
 
 if __name__=="__main__":
