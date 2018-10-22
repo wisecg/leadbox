@@ -27,6 +27,23 @@ def main():
     # - exact calculation of livetime for each file
 
 
+def get_runtime(file_name, verbose=False):
+
+    tf = TFile(file_name)
+    tt = tf.Get("Data_F")
+    n_ent = tt.GetEntries()
+    ts = array('l',[0])
+    tt.SetBranchAddress("Timestamp",ts)
+    tt.GetEntry(0)
+    ts_start = ts[0]/1e12 # caen's timestamp is evidently in picoseconds ... ugh
+    tt.GetEntry(n_ent - 1)
+    ts_stop = ts[0]/1e12
+    runtime = (ts_stop - ts_start)/3600 # sec to hours
+    if verbose:
+        print("Start:{}  Stop:{}  Runtime (hrs):{}".format(ts_start, ts_stop, runtime))
+    return runtime
+
+
 def energy_1d():
     # TODO: make plots to compare weekend 1 and weekend 2 data
     # (be sure to edit filenames)
@@ -36,12 +53,15 @@ def energy_1d():
     runList = [13] # weekend 2
     weekend = 2
 
-    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
+    runtime = 0
+    fileDir = "./data"
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+        runtime += get_runtime(fName)
         ch.Add(fName)
     print("Found %d entries" % (ch.GetEntries()))
+    print("Total runtime (hrs): {:.2f}".format(runtime))
 
     plt.figure(figsize=(10,6),facecolor='w')
 
@@ -233,11 +253,17 @@ def calibrate_energy():
 
     # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
     fileDir = "./data"
+
+    det_mass = 7 # kg
+
+    runtime = 0
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+        runtime += get_runtime(fName)
         ch.Add(fName)
     print("Found %d entries" % (ch.GetEntries()))
+    print("Total runtime (hrs): {:.2f}".format(runtime))
 
     n = ch.Draw("Energy:EnergyShort", "Channel==%d" % (chan), "goff")
     ene, eshort = ch.GetV1(), ch.GetV2()
@@ -250,15 +276,17 @@ def calibrate_energy():
 
     hSene, xSene = np.histogram(ene[idx], bins = 2000, range = (0, 20000))
 
+    # ctTotal = sum(hSene[idx1:idx2])
+
     mx = xSene[np.argmax(hSene)]
     scale = e_peak / mx
 
     xCal = xSene * scale
-    # hCal = hSene / (mass * livetime)
+    hCal = hSene / (det_mass * runtime)
 
     print("Found calibration constant for bin {}: {:.2f}".format(mx, scale))
 
-    plt.semilogy(xCal[1:], hSene, ls='steps', c='r', label="Totals for Channel %d" % chan)
+    plt.semilogy(xCal[1:], hCal, ls='steps', c='r', label="Totals for Channel %d" % chan)
     plt.axvline(e_peak, c='b', label="40K: {:.2f}".format(e_peak))
     plt.legend(loc='best')
     plt.xlabel("Energy (keV)", ha='right', x=1)
