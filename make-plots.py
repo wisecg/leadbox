@@ -27,6 +27,23 @@ def main():
     # - exact calculation of livetime for each file
 
 
+def get_runtime(file_name, verbose=False):
+
+    tf = TFile(file_name)
+    tt = tf.Get("Data_F")
+    n_ent = tt.GetEntries()
+    ts = array('l',[0])
+    tt.SetBranchAddress("Timestamp",ts)
+    tt.GetEntry(0)
+    ts_start = ts[0]/1e12 # caen's timestamp is evidently in picoseconds ... ugh
+    tt.GetEntry(n_ent - 1)
+    ts_stop = ts[0]/1e12
+    runtime = (ts_stop - ts_start)/3600 # sec to hours
+    if verbose:
+        print("Start:{}  Stop:{}  Runtime (hrs):{}".format(ts_start, ts_stop, runtime))
+    return runtime
+
+
 def energy_1d():
     # TODO: make plots to compare weekend 1 and weekend 2 data
     # (be sure to edit filenames)
@@ -36,12 +53,15 @@ def energy_1d():
     runList = [13] # weekend 2
     weekend = 2
 
-    fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
+    runtime = 0
+    fileDir = "./data"
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+        runtime += get_runtime(fName)
         ch.Add(fName)
     print("Found %d entries" % (ch.GetEntries()))
+    print("Total runtime (hrs): {:.2f}".format(runtime))
 
     plt.figure(figsize=(10,6),facecolor='w')
 
@@ -253,6 +273,8 @@ def calibrate_energy():
     fig = plt.figure(figsize=(10, 6), facecolor='w')
 
     hSene, xSene = np.histogram(ene[idx], bins=2000, range=(0, 20000))
+
+    # ctTotal = sum(hSene[idx1:idx2])
 
     # ctTotal = sum(hSene[idx1:idx2])
 
