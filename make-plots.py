@@ -153,7 +153,7 @@ def plot_waveforms():
         exit()
 
 
-def psa_cut(ene = None, eshort = None, chan = 1, scale = 1):
+def psa_cut(ene = None, eshort = None, chan = 1):
 
     def linear(x, m, b):
         return m*x + b
@@ -207,11 +207,9 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1):
     fig2 = plt.figure(figsize=(10,6),facecolor='w')
     plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
 
-    b = int(1000 * scale)
-    r = int(20000 * scale)
-    hEne, xEne = np.histogram(ene, bins=b, range=(0, r))
-    hEneG, xEneG = np.histogram(ene[gammas], bins=b, range=(0, r))
-    hEneA, xEneA = np.histogram(ene[alphas], bins=b, range=(0, r))
+    hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
+    hEneG, xEneG = np.histogram(ene[gammas], bins=1000, range=(0, 20000))
+    hEneA, xEneA = np.histogram(ene[alphas], bins=1000, range=(0, 20000))
 
     # Plot the histograms for the alpha and gamma events
     fig3 = plt.figure(figsize=(10,6),facecolor='w')
@@ -227,17 +225,23 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1):
 
 
 def calibrate_energy():
-    e_peak = 1460.99999 # TODO: look this up from NNDC
+    e_peak = 1460.0  # Could be real, it feels right
     runList = [13]
     chan = 3
 
     # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
     fileDir = "./data"
+
+    det_mass = 7.698  # kg
+
+    runtime = 0
     ch = TChain("Data_F")
     for run in runList:
         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+        runtime += get_runtime(fName)
         ch.Add(fName)
     print("Found %d entries" % (ch.GetEntries()))
+    print("Total runtime (hrs): {:.2f}".format(runtime))
 
     n = ch.Draw("Energy:EnergyShort", "Channel==%d" % (chan), "goff")
     ene, eshort = ch.GetV1(), ch.GetV2()
@@ -246,19 +250,21 @@ def calibrate_energy():
 
     idx = np.where((ene > 10) & (eshort > 10))
 
-    fig = plt.figure(figsize=(10,6),facecolor='w')
+    fig = plt.figure(figsize=(10, 6), facecolor='w')
 
-    hSene, xSene = np.histogram(ene[idx], bins = 2000, range = (0, 20000))
+    hSene, xSene = np.histogram(ene[idx], bins=2000, range=(0, 20000))
+
+    # ctTotal = sum(hSene[idx1:idx2])
 
     mx = xSene[np.argmax(hSene)]
     scale = e_peak / mx
 
     xCal = xSene * scale
-    # hCal = hSene / (mass * livetime)
+    hCal = hSene / (det_mass * runtime)
 
     print("Found calibration constant for bin {}: {:.2f}".format(mx, scale))
 
-    plt.semilogy(xCal[1:], hSene, ls='steps', c='r', label="Totals for Channel %d" % chan)
+    plt.semilogy(xCal[1:], hCal, ls='steps', c='r', label="Totals for Channel %d" % chan)
     plt.axvline(e_peak, c='b', label="40K: {:.2f}".format(e_peak))
     plt.legend(loc='best')
     plt.xlabel("Energy (keV)", ha='right', x=1)
@@ -267,7 +273,7 @@ def calibrate_energy():
     plt.show()
 
     # Perform a PSA cut on our data
-    # psa_cut(ene, eshort, 3, scale)
+    psa_cut(ene, eshort, chan)
 
 
 if __name__=="__main__":
