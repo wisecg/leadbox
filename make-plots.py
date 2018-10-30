@@ -4,7 +4,9 @@ from ROOT import TFile, TChain
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from scipy.optimize import curve_fit
+from array import array
 
+fig = plt.figure(figsize=(10, 6), facecolor='w')
 
 def main():
     """
@@ -16,6 +18,7 @@ def main():
     # branch: Flags                    17481
     # compassF_run_1.root
     """
+
     # energy_1d()
     # energy_2d()
     # plot_waveforms()
@@ -83,6 +86,7 @@ def energy_1d():
         plt.tight_layout()
         # plt.show()
         plt.savefig("./plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
+        plt.clf()
 
         # zoom in on low e region
         hEne2, xEne2 = np.histogram(ene, bins=100, range=(0,2000))
@@ -95,6 +99,7 @@ def energy_1d():
         plt.tight_layout()
         # plt.show()
         plt.savefig("./plots/energy_1d_ch%d_zoom.pdf" % (chan))
+        plt.clf()
 
 
 def energy_2d():
@@ -124,6 +129,7 @@ def energy_2d():
         plt.tight_layout()
         # plt.show()
         plt.savefig("./plots/energy_2d_ch%d.pdf" % (chan))
+        plt.clf()
 
         # fig = plt.figure(figsize=(10,6),facecolor='w')
         # plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,1500),(0,1500)), norm=LogNorm())
@@ -132,6 +138,7 @@ def energy_2d():
         # plt.tight_layout()
         # # plt.show()
         # plt.savefig("./plots/energy_2d_ch%d_zoom.pdf" % (chan))
+        # plt.clf()
 
 
 def plot_waveforms():
@@ -168,86 +175,17 @@ def plot_waveforms():
         plt.xlabel("Time [arb]")
         plt.ylabel("ADC value")
         plt.legend(loc='best')
-        plt.show()
+        # plt.show()
+        plt.savefig("./plots/wf_test.pdf")
+        plt.clf()
 
         exit()
-
-
-def psa_cut(ene = None, eshort = None, chan = 1):
-
-    def linear(x, m, b):
-        return m*x + b
-
-    def poly(x, a, b, c):
-        return a*x**2 + b*x + c
-
-    if ene == None:
-        # runList = [1,3,4,5] # weekend 1
-        runList = [13] # weekend 2
-        # runList = [1,3]
-
-        fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
-        ch = TChain("Data_F")
-        for run in runList:
-        #run = 1
-            fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
-            ch.Add(fName)
-        print("Found %d entries" % (ch.GetEntries()))
-
-        n = ch.Draw("Energy:EnergyShort","Channel==%d" % (chan),"goff")
-        ene, eshort = ch.GetV1(), ch.GetV2()
-        ene = np.asarray([ene[i] for i in range(n)])
-        eshort = np.asarray([eshort[i] for i in range(n)])
-
-    fit_lo, fit_hi = 1000, 2500 # fit line where we don't have alphas in the spectrum
-
-    init_m = (1421-735)/1000.
-    print("init_m",init_m)
-
-    idx = np.where((ene > fit_lo) & (ene < fit_hi) & (eshort > 10)) # (to cut out the noise)
-    par, pcov = curve_fit(linear, ene[idx], eshort[idx]) #, p0=[init_m,0,1])
-    print("Fit done.")
-    print("Pars",par)
-    print("Covariance",pcov)
-
-    fig = plt.figure(figsize=(10,6),facecolor='w')
-    plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
-
-    fit_hi = 7000
-    buf = 120 # offset of linear cut
-
-    xf = np.arange(fit_lo, fit_hi, 0.1)
-    plt.plot(xf, linear(xf, par[0] - 0.01, par[1] + buf), '-r')
-    # plt.plot(xf, poly(xf, *par), '-r')
-
-    # Cut everything below our fit, and then some
-    alphas = np.where(eshort > par[0] * ene + par[1] + buf)
-    gammas = np.where(eshort < par[0] * ene + par[1] + buf)
-
-    fig2 = plt.figure(figsize=(10,6),facecolor='w')
-    plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
-
-    hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
-    hEneG, xEneG = np.histogram(ene[gammas], bins=1000, range=(0, 20000))
-    hEneA, xEneA = np.histogram(ene[alphas], bins=1000, range=(0, 20000))
-
-    # Plot the histograms for the alpha and gamma events
-    fig3 = plt.figure(figsize=(10,6),facecolor='w')
-
-    plt.semilogy(xEne[1:], hEne, ls='steps', c='g', label="Totals for Channel %d" % chan)
-    plt.semilogy(xEneG[1:], hEneG, ls='steps', c='r', label="Gamma events")
-    plt.semilogy(xEneA[1:], hEneA, ls='steps', c='b', label = "Alpha events")
-    plt.xlabel("Energy")
-    plt.ylabel("Counts")
-    plt.legend(loc='best')
-    plt.tight_layout()
-    plt.show()
 
 
 def calibrate_energy():
     e_peak = 1460.0  # Could be real, it feels right
     runList = [13]
-    chan = 3
+    chan = 1
 
     # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
     fileDir = "./data"
@@ -264,17 +202,21 @@ def calibrate_energy():
     print("Total runtime (hrs): {:.2f}".format(runtime))
 
     n = ch.Draw("Energy:EnergyShort", "Channel==%d" % (chan), "goff")
-    ene, eshort = ch.GetV1(), ch.GetV2()
+    ene , eshort = ch.GetV1(), ch.GetV2()
     ene = np.asarray([ene[i] for i in range(n)])
     eshort = np.asarray([eshort[i] for i in range(n)])
 
     idx = np.where((ene > 10) & (eshort > 10))
+    print("Total events: {}  Num. kept after eshort=0: {}".format(len(ene), len(ene[idx])))
 
-    fig = plt.figure(figsize=(10, 6), facecolor='w')
+    # diagnostic plot
+    # plt.hist(ene, bins=(1000), range=(0,10000), histtype='step', color='b', label="no cut")
+    # plt.hist(ene[idx], bins=1000, range=(0, 10000), histtype='step', color='r', label="with cut")
+    # plt.legend()
+    # plt.show()
+    # exit()
 
     hSene, xSene = np.histogram(ene[idx], bins=2000, range=(0, 20000))
-
-    # ctTotal = sum(hSene[idx1:idx2])
 
     # ctTotal = sum(hSene[idx1:idx2])
 
@@ -292,10 +234,106 @@ def calibrate_energy():
     plt.xlabel("Energy (keV)", ha='right', x=1)
     plt.ylabel("Counts (arb)")
     # plt.tight_layout()
-    plt.show()
+    # plt.show()
+    plt.savefig("./plots/ecal_spectrum.png")
+    plt.clf()
+
+
 
     # Perform a PSA cut on our data
     psa_cut(ene, eshort, chan)
+
+
+def psa_cut(ene = None, eshort = None, chan = 1):
+
+    def linear(x, m, b):
+        return m*x + b
+
+    def poly(x, a, b, c):
+        return a*x**2 + b*x + c
+
+    # if ene == None:
+    #     print("i'm here!")
+    #     # runList = [1,3,4,5] # weekend 1
+    #     runList = [13] # weekend 2
+    #     # runList = [1,3]
+    #
+    #     fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
+    #     ch = TChain("Data_F")
+    #     for run in runList:
+    #     #run = 1
+    #         fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+    #         ch.Add(fName)
+    #     print("Found %d entries" % (ch.GetEntries()))
+    #
+    #     n = ch.Draw("Energy:EnergyShort","Channel==%d" % (chan),"goff")
+    #     ene, eshort = ch.GetV1(), ch.GetV2()
+    #     ene = np.asarray([ene[i] for i in range(n)])
+    #     eshort = np.asarray([eshort[i] for i in range(n)])
+
+    idx_noisecut = np.where((ene > 10) & (eshort > 10))
+    ene = ene[idx_noisecut]
+    eshort = eshort[idx_noisecut]
+
+    fit_lo, fit_hi = 1000, 2500 # fit line where we don't have alphas in the spectrum
+
+    init_m = (1421-735)/1000.
+    print("init_m",init_m)
+
+    idx = np.where((ene > fit_lo) & (ene < fit_hi) & (eshort > 10)) # (to cut out the noise)
+    par, pcov = curve_fit(linear, ene[idx], eshort[idx]) #, p0=[init_m,0,1])
+    print("Fit done.")
+    print("Pars",par)
+    print("Covariance",pcov)
+
+    plt.cla()
+    fig = plt.figure(figsize=(10,6),facecolor='w')
+    plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
+
+    fit_hi = 7000
+    buf = 120 # offset of linear cut
+
+    xf = np.arange(fit_lo, fit_hi, 0.1)
+    plt.plot(xf, linear(xf, par[0] - 0.01, par[1] + buf), '-r')
+    # plt.plot(xf, poly(xf, *par), '-r')
+    plt.xlabel("Energy (keV)", ha='right', x=1)
+    plt.ylabel("Counts", ha='right', y=1)
+    plt.savefig("./plots/psa2d_id{}.pdf".format(12345))
+
+    ene = ene[~np.isnan(ene)]
+    eshort = eshort[~np.isnan(eshort)]
+
+    # Cut everything below our fit, and then some
+    alphas = np.where((eshort > par[0] * ene + par[1] + buf))
+    gammas = np.where((eshort < par[0] * ene + par[1] + buf))
+
+    # plt.clf()
+    # plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000),
+    #            range=((0,8000),(0,8000)), norm=LogNorm())
+    # plt.savefig("./plots/psa_2d_id{}.pdf".format(12345))
+
+    hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
+    hEneG, xEneG = np.histogram(ene[gammas], bins=1000, range=(0, 20000))
+    hEneA, xEneA = np.histogram(ene[alphas], bins=1000, range=(0, 20000))
+
+    # Plot the histograms for the alpha and gamma events
+    plt.clf()
+    plt.semilogy(xEne[1:], hEne, ls='steps', c='g', label="Totals for Channel %d" % chan)
+    plt.semilogy(xEneG[1:], hEneG, ls='steps', c='r', label="Gamma events")
+    plt.semilogy(xEneA[1:], hEneA, ls='steps', c='b', label = "Alpha events")
+    plt.xlabel("Energy")
+    plt.ylabel("Counts")
+    plt.legend(loc='best')
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig("./plots/psa_cut.pdf")
+
+    fit_alphas(hEneA, xEneA)
+
+
+# def fit_alphas(ha, xa):
+
+
 
 
 if __name__=="__main__":
