@@ -222,6 +222,7 @@ def calibrate_energy():
 
     mx = xSene[np.argmax(hSene)]
     scale = e_peak / mx
+    hscale = 1 / (det_mass * runtime)
 
     xCal = xSene * scale
     hCal = hSene / (det_mass * runtime)
@@ -241,10 +242,10 @@ def calibrate_energy():
 
 
     # Perform a PSA cut on our data
-    psa_cut(ene, eshort, chan)
+    psa_cut(ene, eshort, chan, scale, hscale)
 
 
-def psa_cut(ene = None, eshort = None, chan = 1):
+def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
 
     def linear(x, m, b):
         return m*x + b
@@ -287,7 +288,7 @@ def psa_cut(ene = None, eshort = None, chan = 1):
     print("Covariance",pcov)
 
     plt.cla()
-    fig = plt.figure(figsize=(10,6),facecolor='w')
+    # fig = plt.figure(figsize=(10,6),facecolor='w')
     plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
 
     fit_hi = 7000
@@ -318,22 +319,44 @@ def psa_cut(ene = None, eshort = None, chan = 1):
 
     # Plot the histograms for the alpha and gamma events
     plt.clf()
-    plt.semilogy(xEne[1:], hEne, ls='steps', c='g', label="Totals for Channel %d" % chan)
-    plt.semilogy(xEneG[1:], hEneG, ls='steps', c='r', label="Gamma events")
-    plt.semilogy(xEneA[1:], hEneA, ls='steps', c='b', label = "Alpha events")
+    plt.semilogy(xEne[1:] * scale, hEne * hscale, ls='steps', c='g', label="Totals for Channel %d" % chan)
+    plt.semilogy(xEneG[1:] * scale, hEneG * hscale, ls='steps', c='r', label="Gamma events")
+    plt.semilogy(xEneA[1:] * scale, hEneA * hscale, ls='steps', c='b', label = "Alpha events")
     plt.xlabel("Energy")
     plt.ylabel("Counts")
     plt.legend(loc='best')
     plt.tight_layout()
-    # plt.show()
-    plt.savefig("./plots/psa_cut.pdf")
+    #plt.show()
+    # plt.savefig("./plots/psa_cut.pdf")
 
-    fit_alphas(hEneA, xEneA)
-
-
-# def fit_alphas(ha, xa):
+    fit_alphas(hEneA * hscale, xEneA * scale)
 
 
+def fit_alphas(ha, xa):
+
+    def gauss_function(x, a, x0, sigma, c):
+        return a*np.exp(-(x-x0)**2/(2*sigma**2)) + c
+
+    # ea1
+    ea2 = 3210
+    ea3 = 3700
+    ea4 = 5000
+
+
+    p0 = [5, ea2, 45, 0.01]
+
+    par, pcov = curve_fit(gauss_function, xa[1:], ha, p0=p0,
+                          bounds = ((-0.1, -1.05*p0[1], -1.3*p0[2], 0),
+                                    (np.inf, 1.05*p0[1], 1.3*p0[2], 1)))
+
+    plt.cla()
+    xf = np.arange(0, 10000, 0.1)
+
+    plt.plot(xf, gauss_function(xf, *par), '-r')
+    plt.plot(xa[1:], ha, ls='steps', c='b', label = "Alpha events")
+
+
+    plt.show()
 
 
 if __name__=="__main__":
