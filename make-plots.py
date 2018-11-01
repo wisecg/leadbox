@@ -334,25 +334,27 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
 
 def fit_alphas(ha, xa):
 
-    def gauss_function(x, a, x0, sigma, c):
+    def gauss(x, a, x0, sigma, c):
         return a*np.exp(-(x-x0)**2/(2*sigma**2)) + c
 
-    # ea1
-    ea2 = 3210
-    ea3 = 3700
-    ea4 = 5000
 
+    s = 70
+    c = 0.1
+    ea1 = [0.53, 2800, s, c]
+    ea2 = [0.70, 3210, s, c]
+    ea3 = [0.45, 3700, s, c]
+    ea4 = [0.35, 5000, s, c]
 
-    p0 = [5, ea2, 45, 0.01]
+    p0 = ea4
 
-    par, pcov = curve_fit(gauss_function, xa[1:], ha, p0=p0,
-                          bounds = ((-0.1, -1.05*p0[1], -1.3*p0[2], 0),
-                                    (np.inf, 1.05*p0[1], 1.3*p0[2], 1)))
+    par, pcov = curve_fit(gauss, xa[1:], ha, p0=p0,
+                          bounds = ((0.95*p0[0], -1.05*p0[1], -1.3*p0[2], 0),
+                                    (p0[0], 1.05*p0[1], 1.3*p0[2], 1)))
 
     plt.cla()
     xf = np.arange(0, 10000, 0.1)
 
-    plt.plot(xf, gauss_function(xf, *par), '-r')
+    plt.plot(xf, gauss(xf, *par), '-r')
     plt.plot(xa[1:], ha, ls='steps', c='b', label = "Alpha events")
 
 
