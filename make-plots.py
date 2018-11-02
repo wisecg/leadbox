@@ -334,22 +334,36 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
 
 def fit_alphas(ha, xa):
 
-    def gauss(x, a, x0, sigma, c):
-        return a*np.exp(-(x-x0)**2/(2*sigma**2)) + c
+    def gauss(x, *params):
+        y = np.zeros_like(x)
+        for i in range(0, len(params)-1, 3):
+            x0 = params[i]
+            a = params[i+1]
+            sigma = params[i+2]
+            y = a*np.exp(-(x-x0)**2/(2*sigma**2))
+        y = y + params[-1]
+        return y
+
+    pk_list = [2790, 3210, 3720]
+    p0_list = []
+    bnd = [[],[]]
+    for pk in pk_list:
+        p0_list.extend([pk, .55, 1])
+        bnd[0].extend([])
+        bnd[1].append()
+    p0_list.append(.1)
+    bnd = tuple(bnd)
+
+    # 0, np.inf, -np.inf, 100000
+
+    print(p0_list)
+
+    # bnd = ((par1_lo, par2_lo, etc),(par1_hi, par2_hi, etc.))
 
 
-    s = 70
-    c = 0.1
-    ea1 = [0.53, 2800, s, c]
-    ea2 = [0.70, 3210, s, c]
-    ea3 = [0.45, 3700, s, c]
-    ea4 = [0.35, 5000, s, c]
+    par, pcov = curve_fit(gauss, xa[1:], ha, p0=p0_list)
+    print(par)
 
-    p0 = ea4
-
-    par, pcov = curve_fit(gauss, xa[1:], ha, p0=p0,
-                          bounds = ((0.95*p0[0], -1.05*p0[1], -1.3*p0[2], 0),
-                                    (p0[0], 1.05*p0[1], 1.3*p0[2], 1)))
 
     plt.cla()
     xf = np.arange(0, 10000, 0.1)
