@@ -359,7 +359,7 @@ def fit_alphas(ha, xa):
     print(p0_list)
 
     # bnd = ((par1_lo, par2_lo, etc),(par1_hi, par2_hi, etc.))
-
+    # still testing
 
 
     par, pcov = curve_fit(gauss, xa[1:], ha, p0=p0_list)
