@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from scipy.optimize import curve_fit
 from array import array
+import glob
 
 fig = plt.figure(figsize=(10, 6), facecolor='w')
 
@@ -23,7 +24,8 @@ def main():
     # energy_2d()
     # plot_waveforms()
     # psa_cut()
-    calibrate_energy()
+    # calibrate_energy()
+    check_rate()
 
     # TODO:
     # - figure out parameters of Energy and EnergyShort
@@ -45,6 +47,54 @@ def get_runtime(file_name, verbose=False):
     if verbose:
         print("Start:{}  Stop:{}  Runtime (hrs):{}".format(ts_start, ts_stop, runtime))
     return runtime
+
+
+    # checking the data rate for the new runs
+
+def check_rate():
+
+
+    runList = [33] # weekend 2
+    # weekend = 2
+
+    runtime = 0
+    fileDir = "./data"
+    ch = TChain("Data_F")
+    for run in runList:
+        filelist = glob.glob("%s/run_%d/FILTERED/compassF_run_33" % (fileDir, run) + "*.root")
+        #note lookup how to use glob, create list of files here, loop overthem and add them 1 by 1 to runtime
+        for f in filelist:
+            runtime += get_runtime(f)
+            ch.Add(f)
+    print("Found %d entries" % (ch.GetEntries()))
+    print("Total runtime (hrs): {:.2f}".format(runtime))
+    exit()
+    # plt.figure(figsize=(10,6),facecolor='w')
+
+    n = ch.Draw("Energy:Channel","","goff")
+
+    ene = ch.GetV1()
+    chan = ch.GetV2()
+    # chan = np.asarray()
+    ene = np.asarray([ene[i] for i in range(n)])
+    chan = np.asarray([chan[i] for i in range(n)])
+
+    # print(len(ene))
+    # idx = np.where(chan == 1)
+    # print(type(idx),idx)
+    # print(len(ene[idx]))
+
+    cts1 = len(ene[np.where(chan == 1)])
+    cts2 = len(ene[np.where(chan == 2)])
+    cts3 = len(ene[np.where(chan == 3)])
+    cts4 = len(ene[np.where(chan == 4)])
+
+    for i in range(1,5):
+        print("cts", i, len(ene[np.where(chan == i)]))
+
+    idx = np.where((chan == 2)& (ene < 100))
+    print(len(idx), idx)
+
 
 
 def energy_1d():
@@ -293,13 +343,13 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
 
     fit_hi = 7000
     buf = 120 # offset of linear cut
-
     xf = np.arange(fit_lo, fit_hi, 0.1)
     plt.plot(xf, linear(xf, par[0] - 0.01, par[1] + buf), '-r')
     # plt.plot(xf, poly(xf, *par), '-r')
     plt.xlabel("Energy (keV)", ha='right', x=1)
     plt.ylabel("Counts", ha='right', y=1)
-    plt.savefig("./plots/psa2d_id{}.pdf".format(12345))
+    plt.savefig("./plots/psa2d_id{}.png".format(12345))
+    print(5)
 
     ene = ene[~np.isnan(ene)]
     eshort = eshort[~np.isnan(eshort)]
@@ -326,10 +376,10 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     plt.ylabel("Counts")
     plt.legend(loc='best')
     plt.tight_layout()
-    #plt.show()
-    # plt.savefig("./plots/psa_cut.pdf")
+    # plt.show()
+    plt.savefig("./plots/psa_cut.pdf")
 
-    fit_alphas(hEneA * hscale, xEneA * scale)
+    # fit_alphas(hEneA * hscale, xEneA * scale)
 
 
 def fit_alphas(ha, xa):
