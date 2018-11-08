@@ -68,32 +68,37 @@ def check_rate():
             ch.Add(f)
     print("Found %d entries" % (ch.GetEntries()))
     print("Total runtime (hrs): {:.2f}".format(runtime))
-    exit()
+
     # plt.figure(figsize=(10,6),facecolor='w')
 
     n = ch.Draw("Energy:Channel","","goff")
-
+    print(1)
     ene = ch.GetV1()
+    print(2)
     chan = ch.GetV2()
+    print(3)
     # chan = np.asarray()
+    #MY COMPUTER GETS SEGMENTATION VIOLATION HERE
     ene = np.asarray([ene[i] for i in range(n)])
+    print(4)
     chan = np.asarray([chan[i] for i in range(n)])
+    print(5)
 
     # print(len(ene))
     # idx = np.where(chan == 1)
     # print(type(idx),idx)
     # print(len(ene[idx]))
 
-    cts1 = len(ene[np.where(chan == 1)])
-    cts2 = len(ene[np.where(chan == 2)])
-    cts3 = len(ene[np.where(chan == 3)])
-    cts4 = len(ene[np.where(chan == 4)])
+    # cts1 = len(ene[np.where(chan == 1)])
+    # cts2 = len(ene[np.where(chan == 2)])
+    # cts3 = len(ene[np.where(chan == 3)])
+    # cts4 = len(ene[np.where(chan == 4)])
 
     for i in range(1,5):
         print("cts", i, len(ene[np.where(chan == i)]))
 
-    idx = np.where((chan == 2)& (ene < 100))
-    print(len(idx), idx)
+    # idx = np.where((chan == 2)
+    # print(len(idx), idx)
 
 
 
