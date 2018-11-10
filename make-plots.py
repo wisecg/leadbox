@@ -54,8 +54,8 @@ def get_runtime(file_name, verbose=False):
 def check_rate():
 
 
-    runList = [33] # weekend 2
-    # weekend = 2
+    runList = [33] # weekend 4
+    weekend = 4
 
     runtime = 0
     fileDir = "./data"
@@ -63,42 +63,62 @@ def check_rate():
     for run in runList:
         filelist = glob.glob("%s/run_%d/FILTERED/compassF_run_33" % (fileDir, run) + "*.root")
         #note lookup how to use glob, create list of files here, loop overthem and add them 1 by 1 to runtime
-        for f in filelist:
+        for f in filelist[:2]:
             runtime += get_runtime(f)
             ch.Add(f)
     print("Found %d entries" % (ch.GetEntries()))
     print("Total runtime (hrs): {:.2f}".format(runtime))
 
-    # plt.figure(figsize=(10,6),facecolor='w')
+    # ch.SetEstimate(ch.GetEntries() + 1)
+    # n = ch.Draw("Energy:Channel","","goff")
+    # ene = ch.GetV1()
+    # chan = ch.GetV2()
+    #
+    # ene = np.asarray([ene[i] for i in range(n)])
+    # chan = np.asarray([chan[i] for i in range(n)])
 
-    n = ch.Draw("Energy:Channel","","goff")
-    print(1)
-    ene = ch.GetV1()
-    print(2)
-    chan = ch.GetV2()
-    print(3)
-    # chan = np.asarray()
-    #MY COMPUTER GETS SEGMENTATION VIOLATION HERE
-    ene = np.asarray([ene[i] for i in range(n)])
-    print(4)
-    chan = np.asarray([chan[i] for i in range(n)])
-    print(5)
 
     # print(len(ene))
     # idx = np.where(chan == 1)
     # print(type(idx),idx)
     # print(len(ene[idx]))
 
-    # cts1 = len(ene[np.where(chan == 1)])
-    # cts2 = len(ene[np.where(chan == 2)])
-    # cts3 = len(ene[np.where(chan == 3)])
-    # cts4 = len(ene[np.where(chan == 4)])
+    # cts1 = len(ene[np.where(chan == 0)])
+    # cts2 = len(ene[np.where(chan == 1)])
+    # cts3 = len(ene[np.where(chan == 2)])
+    # cts4 = len(ene[np.where(chan == 3)])
+    #
+    # for i in range(0,5):
+    #     print("cts", i, len(ene[np.where(chan == i)]))
 
-    for i in range(1,5):
-        print("cts", i, len(ene[np.where(chan == i)]))
+    # text_file = open("./counts.txt", "a")
+    # text_file.write("cts1: %s\n" % cts1)
+    # text_file.write("cts2: %s\n" % cts2)
+    # text_file.write("cts3: %s\n" % cts3)
+    # text_file.write("cts4: %s\n" % cts4)
+    # text_file.close()
 
-    # idx = np.where((chan == 2)
-    # print(len(idx), idx)
+    for chan in range(1, 4):
+    # for chan in range(1,2):
+        print("Plotting channel",chan,"...")
+
+        ch.SetEstimate(ch.GetEntries() + 1)
+        n = ch.Draw("Energy","Channel==%d" % (chan),"goff")
+        ene = ch.GetV1()
+        ene = np.asarray([ene[i] for i in range(n)])
+
+        # full energy range
+        hEne, xEne = np.histogram(ene, bins=1000, range=(0,20000))
+
+        plt.cla() # clear plot from last time
+        plt.semilogy(xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
+        plt.xlabel("Energy")
+        plt.ylabel("Counts")
+        plt.tight_layout()
+        # plt.show()
+        plt.savefig("./plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
+        plt.clf()
+
 
 
 
