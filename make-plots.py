@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-from ROOT import TFile, TChain
+from ROOT import TFile, TChain, TTree
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from scipy.optimize import curve_fit
@@ -25,7 +25,10 @@ def main():
     # plot_waveforms()
     # psa_cut()
     # calibrate_energy()
-    check_rate()
+    # check_rate()
+    # skim_data()
+    skim_1d()
+
 
     # TODO:
     # - figure out parameters of Energy and EnergyShort
@@ -50,6 +53,133 @@ def get_runtime(file_name, verbose=False):
 
 
     # checking the data rate for the new runs
+def skim_1d():
+
+    # runList = [1,3,4,5] # weekend 1
+    # runList = [1,3]
+    # runList = [9,13] # weekend 2
+    # runList = [27] #weekend 3
+    runList = [33] #weekend 4
+    weekend = 4
+
+    runtime = 0
+    fileDir = "./skim"
+    ch = TChain("Data_F")
+    for run in runList:
+        fName = "%s/run_%d.root" % (fileDir, run)
+        runtime += get_runtime(fName)
+        ch.Add(fName)
+    print("Found %d entries" % (ch.GetEntries()))
+    print("Total runtime (hrs): {:.2f}".format(runtime))
+
+    plt.figure(figsize=(10,6),facecolor='w')
+
+    for chan in range(4):
+    # for chan in range(1,4):
+        print("Plotting channel",chan,"...")
+
+        ch.SetEstimate(ch.GetEntries() + 1)
+        n = ch.Draw("Energy","Channel==%d" % (chan),"goff")
+        ene = ch.GetV1()
+        ene = np.asarray([ene[i] for i in range(n)])
+
+        # full energy range
+        hEne, xEne = np.histogram(ene, bins=1000, range=(0,20000))
+
+        plt.cla() # clear plot from last time
+        plt.semilogy(xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
+        plt.xlabel("Energy")
+        plt.ylabel("Counts")
+        plt.tight_layout()
+        # plt.show()
+        plt.savefig("./plots/skim_plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
+        plt.clf()
+
+        # zoom in on low e region
+        # hEne2, xEne2 = np.histogram(ene, bins=100, range=(0,2000))
+        #
+        # plt.cla() # clear plot from last time
+        # plt.semilogy(xEne2[1:], hEne2, ls='steps', c='r', label="Channel %d" % chan)
+        # plt.xlabel("Energy")
+        # plt.ylabel("Counts")
+        # plt.legend(loc='best')
+        # plt.tight_layout()
+        # plt.show()
+        # # plt.savefig("./plots/energy_1d_ch%d_zoom.pdf" % (chan))
+        # plt.clf()
+
+
+def skim_data():
+
+    # runList = [1,3,4,5] # weekend 1
+    # runList = [9,13] # weekend 2
+    # runList = [27] # weekend 3
+    # runList = [33] # weekend 4
+    runList = [34]
+
+
+
+
+    thresh = {}
+    thresh[1] = {0:80, 1:60, 2:70, 3:80}
+    thresh[1] = {0:80, 1:60, 2:70, 3:80}
+    thresh[3] = {0:80, 1:60, 2:70, 3:80}
+    thresh[4] = {0:80, 1:60, 2:70, 3:80}
+    thresh[5] = {0:80, 1:60, 2:70, 3:80}
+    thresh[9] = {0:80, 1:70, 2:100, 3:90}
+    thresh[13] = {0:80, 1:70, 2:100, 3:90}
+    thresh[27] = {0:80, 1:75, 2:70, 3:90}
+    thresh[33] = {0:80, 1:230, 2:300, 3:430}
+    thresh[34] = {0:80, 1:230, 2:300, 3:430}
+
+
+    # print(thresh)
+    # for key in thresh:
+    #     print(key, thresh[key])
+
+
+    fileDir, skimDir = "./data", "./skim"
+
+    for run in runList:
+        filelist = glob.glob("{}/run_{}/FILTERED/compassF_run_{}".format(fileDir, run, run) + "*.root")
+        print(filelist)
+        for f in sorted(filelist):
+
+            fcut = "(Channel==0 && Energy > {}) || ".format(thresh[run][0])
+            fcut += "(Channel==1 && Energy > {}) || ".format(thresh[run][1])
+            fcut += "(Channel==2 && Energy > {}) || ".format(thresh[run][2])
+            fcut += "(Channel==3 && Energy > {})".format(thresh[run][3])
+
+            ch = TChain("Data_F")
+            ch.Add(f)
+            print("Found %d entries" % (ch.GetEntries()))
+
+            outName = "{}/run_{}.root".format(skimDir, run)
+            outFile = TFile(outName, "RECREATE")
+            outTree = TTree()
+            outTree = ch.CopyTree(fcut)
+            outTree.Write()
+            outFile.Close()
+
+            f2 = TFile(outName)
+            tt2 = f2.Get("Data_F")
+            print(tt2.GetEntries())
+
+
+    #
+    # runtime = 0
+    # fileDir = "./data"
+    # ch = TChain("Data_F")
+    # for run in runList:
+    #     filelist = glob.glob("%s/run_%d/FILTERED/compassF_run_33" % (fileDir, run) + "*.root")
+    #     for f in filelist[:2]:
+    #         runtime += get_runtime(f)
+    #         ch.Add(f)
+    # print("Found %d entries" % (ch.GetEntries()))
+    # print("Total runtime (hrs): {:.2f}".format(runtime))
+
+
+
 
 def check_rate():
 
@@ -62,7 +192,6 @@ def check_rate():
     ch = TChain("Data_F")
     for run in runList:
         filelist = glob.glob("%s/run_%d/FILTERED/compassF_run_33" % (fileDir, run) + "*.root")
-        #note lookup how to use glob, create list of files here, loop overthem and add them 1 by 1 to runtime
         for f in filelist[:2]:
             runtime += get_runtime(f)
             ch.Add(f)
@@ -107,6 +236,9 @@ def check_rate():
         ene = ch.GetV1()
         ene = np.asarray([ene[i] for i in range(n)])
 
+        #energy cut here
+        # ene = ene[ene > 100]
+
         # full energy range
         hEne, xEne = np.histogram(ene, bins=1000, range=(0,20000))
 
@@ -115,8 +247,8 @@ def check_rate():
         plt.xlabel("Energy")
         plt.ylabel("Counts")
         plt.tight_layout()
-        # plt.show()
-        plt.savefig("./plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
+        plt.show()
+        # plt.savefig("./plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
         plt.clf()
 
 
@@ -129,7 +261,8 @@ def energy_1d():
     # runList = [1,3,4,5] # weekend 1
     # runList = [1,3]
     runList = [13] # weekend 2
-    weekend = 2
+    runList = [27] #weekend 3
+    weekend = 3
 
     runtime = 0
     fileDir = "./data"
@@ -144,9 +277,10 @@ def energy_1d():
     plt.figure(figsize=(10,6),facecolor='w')
 
     for chan in range(4):
-    # for chan in range(1):
+    # for chan in range(1,4):
         print("Plotting channel",chan,"...")
 
+        ch.SetEstimate(ch.GetEntries() + 1)
         n = ch.Draw("Energy","Channel==%d" % (chan),"goff")
         ene = ch.GetV1()
         ene = np.asarray([ene[i] for i in range(n)])
@@ -159,8 +293,8 @@ def energy_1d():
         plt.xlabel("Energy")
         plt.ylabel("Counts")
         plt.tight_layout()
-        # plt.show()
-        plt.savefig("./plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
+        plt.show()
+        # plt.savefig("./plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
         plt.clf()
 
         # zoom in on low e region
@@ -172,8 +306,8 @@ def energy_1d():
         plt.ylabel("Counts")
         plt.legend(loc='best')
         plt.tight_layout()
-        # plt.show()
-        plt.savefig("./plots/energy_1d_ch%d_zoom.pdf" % (chan))
+        plt.show()
+        # plt.savefig("./plots/energy_1d_ch%d_zoom.pdf" % (chan))
         plt.clf()
 
 
@@ -434,7 +568,6 @@ def fit_alphas(ha, xa):
     print(p0_list)
 
     # bnd = ((par1_lo, par2_lo, etc),(par1_hi, par2_hi, etc.))
-    # still testing
 
 
     par, pcov = curve_fit(gauss, xa[1:], ha, p0=p0_list)
