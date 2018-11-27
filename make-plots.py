@@ -23,7 +23,7 @@ def main():
     # energy_2d()
     # plot_waveforms()
     # psa_cut()
-    calibrate_energy()
+    calibrate_energy(1, [33])
 
     # TODO:
     # - figure out parameters of Energy and EnergyShort
@@ -182,10 +182,8 @@ def plot_waveforms():
         exit()
 
 
-def calibrate_energy():
+def calibrate_energy(chan, runList):
     e_peak = 1460.0  # Could be real, it feels right
-    runList = [13]
-    chan = 1
 
     # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
     fileDir = "./data"
@@ -235,17 +233,17 @@ def calibrate_energy():
     plt.xlabel("Energy (keV)", ha='right', x=1)
     plt.ylabel("Counts (arb)")
     # plt.tight_layout()
-    # plt.show()
-    plt.savefig("./plots/ecal_spectrum.png")
+    plt.show()
+    # plt.savefig("./plots/ecal_spectrum.png")
     plt.clf()
 
 
 
     # Perform a PSA cut on our data
-    psa_cut(ene, eshort, chan, scale, hscale)
+    psa_cut(ene, eshort, chan, runList, scale, hscale)
 
 
-def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
+def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hscale = 1):
 
     def linear(x, m, b):
         return m*x + b
@@ -272,11 +270,17 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     #     ene = np.asarray([ene[i] for i in range(n)])
     #     eshort = np.asarray([eshort[i] for i in range(n)])
 
+    # Dictionary of fit bounds and offsets for the various 'good' datasets
+    # fit_dict = {"1, [13]" : (1000, 2500, 160), "3, [13]" : (1000, 2500, 100),
+                # "2, [27]" : (2500, 3000, 60)}
+
     idx_noisecut = np.where((ene > 10) & (eshort > 10))
     ene = ene[idx_noisecut]
     eshort = eshort[idx_noisecut]
 
-    fit_lo, fit_hi = 1000, 2500 # fit line where we don't have alphas in the spectrum
+    # fits = fit_dict[str(chan) + ", " + str(runList)]
+
+    fit_lo, fit_hi = 1000, 2500 #fits[0], fits[1] # fit line where we don't have alphas in the spectrum
 
     init_m = (1421-735)/1000.
     print("init_m",init_m)
@@ -292,14 +296,16 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
 
     fit_hi = 7000
-    buf = 120 # offset of linear cut
+    fit_lo = 1000
+    buf = 60 #fits[2] # offset of linear cut
 
     xf = np.arange(fit_lo, fit_hi, 0.1)
-    plt.plot(xf, linear(xf, par[0] - 0.01, par[1] + buf), '-r')
+    plt.plot(xf, linear(xf, par[0], par[1] + buf), '-r')
     # plt.plot(xf, poly(xf, *par), '-r')
     plt.xlabel("Energy (keV)", ha='right', x=1)
     plt.ylabel("Counts", ha='right', y=1)
     plt.savefig("./plots/psa2d_id{}.pdf".format(12345))
+    plt.show()
 
     ene = ene[~np.isnan(ene)]
     eshort = eshort[~np.isnan(eshort)]
@@ -308,9 +314,12 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     alphas = np.where((eshort > par[0] * ene + par[1] + buf))
     gammas = np.where((eshort < par[0] * ene + par[1] + buf))
 
-    # plt.clf()
-    # plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000),
-    #            range=((0,8000),(0,8000)), norm=LogNorm())
+    plt.clf()
+    plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000),
+               range=((0,8000),(0,8000)), norm=LogNorm())
+    plt.xlabel("Energy (keV)")
+    plt.ylabel("Counts")
+    plt.show()
     # plt.savefig("./plots/psa_2d_id{}.pdf".format(12345))
 
     hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
@@ -322,14 +331,14 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     plt.semilogy(xEne[1:] * scale, hEne * hscale, ls='steps', c='g', label="Totals for Channel %d" % chan)
     plt.semilogy(xEneG[1:] * scale, hEneG * hscale, ls='steps', c='r', label="Gamma events")
     plt.semilogy(xEneA[1:] * scale, hEneA * hscale, ls='steps', c='b', label = "Alpha events")
-    plt.xlabel("Energy")
+    plt.xlabel("Energy (keV)")
     plt.ylabel("Counts")
     plt.legend(loc='best')
     plt.tight_layout()
-    #plt.show()
+    plt.show()
     # plt.savefig("./plots/psa_cut.pdf")
 
-    fit_alphas(hEneA * hscale, xEneA * scale)
+    # fit_alphas(hEneA * hscale, xEneA * scale)
 
 
 def fit_alphas(ha, xa):
