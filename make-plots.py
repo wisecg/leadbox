@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+from scipy.integrate import quad
 from ROOT import TFile, TChain, TTree
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -24,10 +25,10 @@ def main():
     # energy_2d()
     # plot_waveforms()
     # psa_cut()
-    # calibrate_energy()
+    calibrate_energy()
     # check_rate()
     # skim_data()
-    skim_1d()
+    # skim_1d()
 
 
     # TODO:
@@ -260,9 +261,9 @@ def energy_1d():
 
     # runList = [1,3,4,5] # weekend 1
     # runList = [1,3]
-    runList = [13] # weekend 2
-    runList = [27] #weekend 3
-    weekend = 3
+    runList = [34] # weekend 2
+    # runList = [27] #weekend 3
+    weekend = 4
 
     runtime = 0
     fileDir = "./data"
@@ -397,14 +398,14 @@ def calibrate_energy():
     chan = 1
 
     # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
-    fileDir = "./data"
+    fileDir = "./skim"
 
     det_mass = 7.698  # kg
 
     runtime = 0
     ch = TChain("Data_F")
     for run in runList:
-        fName = "%s/run_%d/FILTERED/compassF_run_%d.root" % (fileDir, run, run)
+        fName = "%s/run_%d.root" % (fileDir, run)
         runtime += get_runtime(fName)
         ch.Add(fName)
     print("Found %d entries" % (ch.GetEntries()))
@@ -423,7 +424,7 @@ def calibrate_energy():
     # plt.hist(ene[idx], bins=1000, range=(0, 10000), histtype='step', color='r', label="with cut")
     # plt.legend()
     # plt.show()
-    # exit()
+
 
     hSene, xSene = np.histogram(ene[idx], bins=2000, range=(0, 20000))
 
@@ -455,6 +456,8 @@ def calibrate_energy():
 
 
 def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
+
+    run = 13
 
     def linear(x, m, b):
         return m*x + b
@@ -507,8 +510,7 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     # plt.plot(xf, poly(xf, *par), '-r')
     plt.xlabel("Energy (keV)", ha='right', x=1)
     plt.ylabel("Counts", ha='right', y=1)
-    plt.savefig("./plots/psa2d_id{}.png".format(12345))
-    print(5)
+    plt.savefig("./plots/psa2d_id{}.png".format(run))
 
     ene = ene[~np.isnan(ene)]
     eshort = eshort[~np.isnan(eshort)]
@@ -538,7 +540,7 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     # plt.show()
     plt.savefig("./plots/psa_cut.pdf")
 
-    # fit_alphas(hEneA * hscale, xEneA * scale)
+    fit_alphas(hEneA * hscale, xEneA * scale)
 
 
 def fit_alphas(ha, xa):
@@ -549,29 +551,56 @@ def fit_alphas(ha, xa):
             x0 = params[i]
             a = params[i+1]
             sigma = params[i+2]
-            y = a*np.exp(-(x-x0)**2/(2*sigma**2))
+            y += a*np.exp(-(x-x0)**2/(2*sigma**2))
         y = y + params[-1]
         return y
 
-    pk_list = [2790, 3210, 3720]
-    p0_list = []
-    bnd = [[],[]]
-    for pk in pk_list:
-        p0_list.extend([pk, .55, 1])
-        bnd[0].extend([])
-        bnd[1].append()
-    p0_list.append(.1)
-    bnd = tuple(bnd)
+    # # pk_list = [2798, 3212]
+    # pk_list = [3212]
+    # p0_list = []
+    # bnd = [[],[]]
+    # for pk in pk_list:
+    #     p0_list.extend([pk, .6, 100])
+    #     # bnd[0].extend([pk*.9, ])
+    #     # bnd[1].extend([pk*1.1])
+    # p0_list.append(.005)
+    # # bnd = tuple(bnd)
+
+    p0_list = [2798, .5, 50, 3212, .68, 100, 3688, .46, 75, 4256, .058, 50, 4900, 1, 100, .005]
 
     # 0, np.inf, -np.inf, 100000
 
-    print(p0_list)
 
-    # bnd = ((par1_lo, par2_lo, etc),(par1_hi, par2_hi, etc.))
+    bnd = ((p0_list[0]*.9, .4, 0, p0_list[3]*.9, .65, 0, p0_list[6]*.9, .4, 0, p0_list[9]*.9, .04, 0, p0_list[12]*.9, .3, 50, 0),
+            (p0_list[0]*1.1, 2, 500, p0_list[3]*1.1, 2, 500, p0_list[6]*1.1, 2, 500, p0_list[9]*1.1, 2, 500, p0_list[12]*1.1, 2, 500, .02))
+
+    # bnd = ((p0_list[0]*.9, .4, 0, p0_list[3]*.9, .65, 0, p0_list[6]*.9, .4, 0, p0_list[9]*.9, .04, 0, p0_list[12]*.9, .8, 100, 0),
+    #         (p0_list[0]*1.1, 2, 500, p0_list[3]*1.1, 2, 500, p0_list[6]*1.1, 2, 500, p0_list[9]*1.1, 2, 500, p0_list[12]*1.005, 1.25, 500, .02))
 
 
-    par, pcov = curve_fit(gauss, xa[1:], ha, p0=p0_list)
+    # bnd = ((p0_list[0]*.5, .6, 0, 0),
+    #         (p0_list[0]*1.4, .7, 400, .02))
+
+    # 100,320
+
+    par, pcov = curve_fit(gauss, xa[100:320], ha[100:320], p0=p0_list, bounds = bnd)
     print(par)
+
+    # text_file = open("./params.txt", "a")
+    # text_file.write("{}".format(par))
+    # text_file.close()
+
+    counts = 0
+    n = 1
+
+    for i in range(0,len(par)-1, 3):
+        mu, amp, sig, bkg = par[i], par[i+1], par[i+2], par[-1]
+        print("Scanning peak ",n," at energy", mu)
+        ans = quad(gauss, mu - 5*sig, mu + 5*sig, args = (mu, amp, sig, bkg))
+        # print(ans[0], " counts/(kg*hr)")
+        answer = ans[0]/((mu+5*sig) - (mu-5*sig))
+        print("E = {:.4f} +/- {:.2e} cts/kg-hr-keV".format(answer, ans[1]))
+        n += 1
 
 
     plt.cla()
@@ -579,6 +608,7 @@ def fit_alphas(ha, xa):
 
     plt.plot(xf, gauss(xf, *par), '-r')
     plt.plot(xa[1:], ha, ls='steps', c='b', label = "Alpha events")
+
 
 
     plt.show()
