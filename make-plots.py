@@ -426,6 +426,12 @@ def calibrate_energy(chan, runList):
 
     # ctTotal = sum(hSene[idx1:idx2])
 
+    # # placeholder
+    # params = {
+    #     "run or channel":[guess values, ],
+    #     "run 2":[guess 2]
+    # }
+
     mx = xSene[np.argmax(hSene)]
     scale = e_peak / mx
     hscale = 1 / (det_mass * runtime)
@@ -517,11 +523,21 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     xf = np.arange(fit_lo, fit_hi, 0.1)
     plt.plot(xf, linear(xf, par[0], par[1] + buf), '-r')
     plt.xlabel("Energy (keV)", ha='right', x=1)
+<<<<<<< HEAD
     plt.ylabel("E-short (keV)", ha='right', y=1)
     # plt.ylim(0, 4000) # Note this is the zoomed version!!!
     # plt.xlim(2000, 6000) # Also zoomed
     plt.savefig("./plots/psa2d_id{},{}.pdf".format(chan, runList)) # 2D hist of e vs eshort
+=======
+<<<<<<< HEAD
+    plt.ylabel("Eshort (keV)", ha='right', y=1)
+    plt.savefig("./plots/psa2d_id{}.png".format(run))
+=======
+    plt.ylabel("Counts", ha='right', y=1)
+    plt.savefig("./plots/psa2d_id{},{}.pdf".format(chan, runList))
+>>>>>>> 8288c9810805af17b40a23e90c7a2b8d8ae00c57
     plt.show()
+>>>>>>> edf740baef1cfe227460fff42cca2f1b43235085
 
     ene = ene[~np.isnan(ene)]
     eshort = eshort[~np.isnan(eshort)]
@@ -533,10 +549,16 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     plt.clf()
     plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000),
                range=((0,8000),(0,8000)), norm=LogNorm())
+<<<<<<< HEAD
+    plt.xlabel("Energy (keV)", ha='right', x=1)
+    plt.ylabel("Eshort (keV)", ha='right', y=1)
+    plt.savefig("./plots/psa_2d_id{}.png".format(234))
+=======
     plt.xlabel("Energy (keV)")
     plt.ylabel("Counts")
     plt.savefig("./plots/psa_2d_id{},{}ac.pdf".format(chan, runList)) # 2D hist after cutting
     plt.show()
+>>>>>>> edf740baef1cfe227460fff42cca2f1b43235085
 
     hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
     hEneG, xEneG = np.histogram(ene[gammas], bins=1000, range=(0, 20000))
@@ -547,10 +569,19 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     plt.semilogy(xEne[1:] * scale, hEne * hscale, ls='steps', c='g', label="Totals for Channel %d" % chan)
     plt.semilogy(xEneG[1:] * scale, hEneG * hscale, ls='steps', c='r', label="Gamma events")
     plt.semilogy(xEneA[1:] * scale, hEneA * hscale, ls='steps', c='b', label = "Alpha events")
+<<<<<<< HEAD
+    plt.xlabel("Energy")
+    plt.ylabel("Counts/kg-hr")
+    plt.legend(loc='best')
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig("./plots/psa_cut.png")
+=======
     plt.xlabel("Energy (keV)")
     plt.ylabel("Counts")
     plt.legend(loc='best')
     plt.tight_layout()
+>>>>>>> edf740baef1cfe227460fff42cca2f1b43235085
 
     plt.savefig("./plots/agspec {},{}.pdf".format(chan, runList)) # alpha vs gamma hists
     plt.show()
@@ -613,8 +644,8 @@ def fit_alphas(ha, xa):
         print("Scanning peak ",n," at energy", mu)
         ans = quad(gauss, mu - 5*sig, mu + 5*sig, args = (mu, amp, sig, bkg))
         # print(ans[0], " counts/(kg*hr)")
-        answer = ans[0]/((mu+5*sig) - (mu-5*sig))
-        print("E = {:.4f} +/- {:.2e} cts/kg-hr-keV".format(answer, ans[1]))
+        answer = ans[0]
+        print("R = {:.4f} +/- {:.2e} cts/kg-hr-keV".format(answer, ans[1]))
         n += 1
 
 
@@ -622,7 +653,9 @@ def fit_alphas(ha, xa):
     xf = np.arange(0, 10000, 0.1)
 
     plt.plot(xf, gauss(xf, *par), '-r')
-    plt.plot(xa[1:], ha, ls='steps', c='b', label = "Alpha events")
+    plt.plot(xa[100:320], ha[100:320], ls='steps', c='b', label = "Alpha events")
+    plt.xlabel("Energy (keV)")
+    plt.ylabel("Cts/kg-hr-keV")
 
 
 
