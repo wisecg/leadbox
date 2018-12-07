@@ -21,19 +21,21 @@ def main():
     # compassF_run_1.root
     """
 
+    # Calibrate energy will calibrate, perform the PSA cut, and fit the alphas. It is likely
+    # all you will need. Method headers note graphs generated.
+
     # skim_data(0)
     # energy_1d()
     # energy_2d()
     # plot_waveforms()
     # psa_cut()
-    calibrate_energy(1, [33])
+    calibrate_energy(2, [33]) # inputs are channel, [list_of_runs]
     # check_rate()
     # skim_1d()
 
     # TODO:
     # - figure out parameters of Energy and EnergyShort
     # - exact calculation of livetime for each file
-
 
 def get_runtime(file_name, verbose=False):
 
@@ -386,9 +388,10 @@ def plot_waveforms():
 
         exit()
 
-
+# Calibrates the spectum of channel "chan" across all runs in runList. Generates a 1D energy
+# spectrum with a line at the K40 peak. Then calls psa_cut.
 def calibrate_energy(chan, runList):
-    e_peak = 1460.0  # Could be real, it feels right
+    e_peak = 1460.0  # K40 energy
 
     # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
     fileDir = "./skim"
@@ -438,8 +441,8 @@ def calibrate_energy(chan, runList):
     plt.xlabel("Energy (keV)", ha='right', x=1)
     plt.ylabel("Counts (arb)")
     # plt.tight_layout()
+    plt.savefig("./plots/ecal_spectrum.png")
     plt.show()
-    # plt.savefig("./plots/ecal_spectrum.png")
     plt.clf()
 
 
@@ -447,16 +450,17 @@ def calibrate_energy(chan, runList):
     # Perform a PSA cut on our data
     psa_cut(ene, eshort, chan, runList, scale, hscale)
 
-
+# Generates a 2D graph of energy vs. eshort with our cut line drawn in, another graph of
+# the same after performing our cut, and then ploits the separate histograms for the
+# alpha and gamma events on top of one another. If called from calibrate_energy, all
+# energies will be scaled from the K40 peak.
 def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hscale = 1):
-
-    run = 13
 
     def linear(x, m, b):
         return m*x + b
 
-    def poly(x, a, b, c):
-        return a*x**2 + b*x + c
+    # def poly(x, a, b, c):
+        # return a*x**2 + b*x + c
 
     # if ene == None:
     #     print("i'm here!")
@@ -477,7 +481,8 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     #     ene = np.asarray([ene[i] for i in range(n)])
     #     eshort = np.asarray([eshort[i] for i in range(n)])
 
-    # Dictionary of fit bounds and offsets for the various 'good' datasets
+    # Dictionary of fit bounds and offsets for the various 'good' datasets. Runs not in here
+    # are bad, and don't behave nicely; if a run is in here, we use this dict for cleaner cuts.
     fit_dict = {"1, [13]" : (1000, 2500, 160), "3, [13]" : (1000, 2500, 100),
                 "2, [27]" : (2500, 3000, 60), "(1, [33])" : (1000, 2500, 180)}
 
@@ -486,19 +491,17 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     eshort = eshort[idx_noisecut]
 
     fits = []
-    # if fit_dict[str(chan) + ", " + str(runList)]
     ind = str(chan) + ", " + str(runList)
     if ind in fit_dict:
         fits = fit_dict[str(chan) + ", " + str(runList)]
     else:
-        fits = (1000, 2500, 100)
+        fits = (1000, 2500, 100) # Just use any fit params, the data not in the dict ==> bad data
     fit_lo, fit_hi = fits[0], fits[1] # fit line where we don't have alphas in the spectrum
 
     init_m = (1421-735)/1000.
     print("init_m",init_m)
-
     idx = np.where((ene > fit_lo) & (ene < fit_hi) & (eshort > 10)) # (to cut out the noise)
-    par, pcov = curve_fit(linear, ene[idx], eshort[idx]) #, p0=[init_m,0,1])
+    par, pcov = curve_fit(linear, ene[idx], eshort[idx])
     print("Fit done.")
     print("Pars",par)
     print("Covariance",pcov)
@@ -513,10 +516,11 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
 
     xf = np.arange(fit_lo, fit_hi, 0.1)
     plt.plot(xf, linear(xf, par[0], par[1] + buf), '-r')
-    # plt.plot(xf, poly(xf, *par), '-r')
     plt.xlabel("Energy (keV)", ha='right', x=1)
-    plt.ylabel("Counts", ha='right', y=1)
-    plt.savefig("./plots/psa2d_id{},{}.pdf".format(chan, runList))
+    plt.ylabel("E-short (keV)", ha='right', y=1)
+    # plt.ylim(0, 4000) # Note this is the zoomed version!!!
+    # plt.xlim(2000, 6000) # Also zoomed
+    plt.savefig("./plots/psa2d_id{},{}.pdf".format(chan, runList)) # 2D hist of e vs eshort
     plt.show()
 
     ene = ene[~np.isnan(ene)]
@@ -531,7 +535,7 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
                range=((0,8000),(0,8000)), norm=LogNorm())
     plt.xlabel("Energy (keV)")
     plt.ylabel("Counts")
-    plt.savefig("./plots/psa_2d_id{},{}ac.pdf".format(chan, runList))
+    plt.savefig("./plots/psa_2d_id{},{}ac.pdf".format(chan, runList)) # 2D hist after cutting
     plt.show()
 
     hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
@@ -548,12 +552,12 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     plt.legend(loc='best')
     plt.tight_layout()
 
-    plt.savefig("./plots/agspec {},{}.pdf".format(chan, runList))
+    plt.savefig("./plots/agspec {},{}.pdf".format(chan, runList)) # alpha vs gamma hists
     plt.show()
 
-    # fit_alphas(hEneA * hscale, xEneA * scale)
+    fit_alphas(hEneA * hscale, xEneA * scale) # Fit our alphas
 
-
+# Actually performs the alpha fit. Creates a graph of the fitted alphas.
 def fit_alphas(ha, xa):
 
     def gauss(x, *params):
