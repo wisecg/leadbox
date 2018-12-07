@@ -430,6 +430,12 @@ def calibrate_energy():
 
     # ctTotal = sum(hSene[idx1:idx2])
 
+    # # placeholder
+    # params = {
+    #     "run or channel":[guess values, ],
+    #     "run 2":[guess 2]
+    # }
+
     mx = xSene[np.argmax(hSene)]
     scale = e_peak / mx
     hscale = 1 / (det_mass * runtime)
@@ -509,7 +515,7 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     plt.plot(xf, linear(xf, par[0] - 0.01, par[1] + buf), '-r')
     # plt.plot(xf, poly(xf, *par), '-r')
     plt.xlabel("Energy (keV)", ha='right', x=1)
-    plt.ylabel("Counts", ha='right', y=1)
+    plt.ylabel("Eshort (keV)", ha='right', y=1)
     plt.savefig("./plots/psa2d_id{}.png".format(run))
 
     ene = ene[~np.isnan(ene)]
@@ -519,10 +525,12 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     alphas = np.where((eshort > par[0] * ene + par[1] + buf))
     gammas = np.where((eshort < par[0] * ene + par[1] + buf))
 
-    # plt.clf()
-    # plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000),
-    #            range=((0,8000),(0,8000)), norm=LogNorm())
-    # plt.savefig("./plots/psa_2d_id{}.pdf".format(12345))
+    plt.clf()
+    plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000),
+               range=((0,8000),(0,8000)), norm=LogNorm())
+    plt.xlabel("Energy (keV)", ha='right', x=1)
+    plt.ylabel("Eshort (keV)", ha='right', y=1)
+    plt.savefig("./plots/psa_2d_id{}.png".format(234))
 
     hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
     hEneG, xEneG = np.histogram(ene[gammas], bins=1000, range=(0, 20000))
@@ -534,11 +542,11 @@ def psa_cut(ene = None, eshort = None, chan = 1, scale = 1, hscale = 1):
     plt.semilogy(xEneG[1:] * scale, hEneG * hscale, ls='steps', c='r', label="Gamma events")
     plt.semilogy(xEneA[1:] * scale, hEneA * hscale, ls='steps', c='b', label = "Alpha events")
     plt.xlabel("Energy")
-    plt.ylabel("Counts")
+    plt.ylabel("Counts/kg-hr")
     plt.legend(loc='best')
     plt.tight_layout()
     # plt.show()
-    plt.savefig("./plots/psa_cut.pdf")
+    plt.savefig("./plots/psa_cut.png")
 
     fit_alphas(hEneA * hscale, xEneA * scale)
 
@@ -598,8 +606,8 @@ def fit_alphas(ha, xa):
         print("Scanning peak ",n," at energy", mu)
         ans = quad(gauss, mu - 5*sig, mu + 5*sig, args = (mu, amp, sig, bkg))
         # print(ans[0], " counts/(kg*hr)")
-        answer = ans[0]/((mu+5*sig) - (mu-5*sig))
-        print("E = {:.4f} +/- {:.2e} cts/kg-hr-keV".format(answer, ans[1]))
+        answer = ans[0]
+        print("R = {:.4f} +/- {:.2e} cts/kg-hr-keV".format(answer, ans[1]))
         n += 1
 
 
@@ -607,7 +615,9 @@ def fit_alphas(ha, xa):
     xf = np.arange(0, 10000, 0.1)
 
     plt.plot(xf, gauss(xf, *par), '-r')
-    plt.plot(xa[1:], ha, ls='steps', c='b', label = "Alpha events")
+    plt.plot(xa[100:320], ha[100:320], ls='steps', c='b', label = "Alpha events")
+    plt.xlabel("Energy (keV)")
+    plt.ylabel("Cts/kg-hr-keV")
 
 
 
