@@ -37,7 +37,8 @@ def main():
     # skim_data("1")
     # calibrate_channel("4", 1)
     # psd_channel("2",3)
-    alpha_spec("2", 1)
+    # alpha_spec("2", 1)
+    plot_thresholds()
 
     # -- batch mode --
     # process()
@@ -556,8 +557,8 @@ def alpha_spec(wk, chan):
     # bounds should be = ((mu1lo, a1lo, ...), (mu1hi, a1hi, ...))
     bnds = [[],[]]
     for i in [0,3,6,9,12]:
-        bnds[0].append(pars[i] * .8, 0, 0)
-        bnds[1].append(pars[i] * 1.1, 10000, 500)
+        bnds[0].extend([pars[i] * .8, 0, 0])
+        bnds[1].extend([pars[i] * 1.1, 10000, 500])
     bnds[0].append(0)
     bnds[1].append(1)
 
@@ -584,7 +585,7 @@ def alpha_spec(wk, chan):
     #     print("{:.4e}".format(p) + ", ")
 
     # don't use this, it messes up the formatting of run_info.json
-    # run_info["fit_results"] = {}
+    # run_info["fit_results"] = {} <- also this wouldn't work in batch
     # run_info["fit_results"][wk][ch] = par
     # run_info["fit_errors"] = {}
     # run_info["fit_errors"][wk][ch] = perr
@@ -635,8 +636,56 @@ def update_info():
         json.dump(run_info, f, sort_keys=True, indent=2, separators=(',', ': '))
 
 
-# need to also show spectra w/ thresholds?
-# or maybe that's ok to leave for keira's slides
+def plot_thresholds():
+    """
+    take our good channels, and plot the low energy region of
+    their calibrated spectra.
+    """
+    # get list of wk/chan pairs
+    pairs = []
+    for wk in run_info["goodres_chans"]:
+        for chan in run_info["goodres_chans"][wk]:
+            pairs.append((wk, chan))
+
+    cmap = plt.cm.get_cmap('nipy_spectral', len(pairs)+5)
+
+    for i, (wk, chan) in enumerate(pairs):
+
+        # load metadata
+        runs = run_info["runs"][wk]
+        gain = run_info["gain"][wk][chan]
+        runtime = float(run_info["runtime"][wk])
+        mass = float(run_info["det_mass_kg"])
+        expo = (runtime/24) * mass # kg-d
+
+        # load and clean data
+        ch = load_data(wk, chan)
+        ch.SetEstimate(ch.GetEntries())
+        n = ch.Draw("Energy","Channel=={}".format(chan),"goff")
+        ene = ch.GetV1()
+        ene = np.asarray([ene[i] for i in range(n)])
+
+        x_lo, x_hi, xpb = 0, 5000, 1
+        xE, hE = get_hist(ene, x_lo, x_hi, xpb)
+
+        xE = xE * gain
+        epb = xE[1] - xE[0]
+        hE = hE / expo / epb
+
+        print("gain {:.2f}  rt {:.2f}  expo {:.2f}".format(gain, runtime, expo))
+
+        plt.plot(xE, hE, c=cmap(i), ls='steps', lw=2,
+                     label="wk {}, chan {}".format(wk, chan))
+
+    plt.axvline(1460, c='r', label=r"$\mathregular{{}^{40}K}$")
+    plt.xlim(10, 2000)
+    plt.xlabel("Energy (keV)", ha='right', x=1)
+    plt.ylabel("Counts / keV / kg-d", ha='right', y=1)
+    plt.legend(loc=2, fontsize=12)
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig("./plots/thresholds.pdf")
+
 
 
 def time_coins(wk, chan):
