@@ -554,20 +554,12 @@ def alpha_spec(wk, chan):
         ]
 
     # bounds should be = ((mu1lo, a1lo, ...), (mu1hi, a1hi, ...))
-    bnds = (
-        (pars[0] * .8, 0, 0,
-         pars[3] * .8, 0, 0,
-         pars[6] * .8, 0, 0,
-         pars[9] * .8, 0, 0,
-         pars[12] * .8, .3, 50,
-         0),
-        (pars[0] * 1.1, 10000, 500,
-         pars[3] * 1.1, 10000, 500,
-         pars[6] * 1.1, 10000, 500,
-         pars[9] * 1.1, 10000, 500,
-         pars[12] * 1.1, 10000, 500,
-         .02)
-        )
+    bnds = [[],[]]
+    for i in [0,3,6,9,12]:
+        bnds[0].append(pars[i] * .8, 0, 0)
+        bnds[1].append(pars[i] * 1.1, 10000, 500)
+    bnds[0].append(0)
+    bnds[1].append(1)
 
     # fit function x values
     xF = np.arange(x_lo, x_hi, xpb)
