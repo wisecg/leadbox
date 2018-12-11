@@ -8,60 +8,59 @@ from scipy.optimize import curve_fit
 from array import array
 import glob
 
-fig = plt.figure(figsize=(10, 6), facecolor='w')
 
 def main():
     """
-    # branch: Board                     6737
-    # branch: Channel                 184333  0,1,2,3
-    # branch: Timestamp              2389745
-    # branch: Energy                  743518
-    # branch: EnergyShort             725173
-    # branch: Flags                    17481
-    # compassF_run_1.root
-    """
+    branch: Board                     6737
+	branch: Channel                 184333  0,1,2,3
+	branch: Timestamp              2389745
+	branch: Energy                  743518
+	branch: EnergyShort             725173
+	branch: Flags                    17481
+	compassF_run_1.root
 
-    # Calibrate energy will calibrate, perform the PSA cut, and fit the alphas. It is likely
-    # all you will need. Method headers note graphs generated.
+    calibrate_energy will calibrate, perform the PSA cut, and fit the alphas. It is likely
+	all you will need. Method headers note graphs generated.
+    """
+    fig = plt.figure(figsize=(10, 6), facecolor='w')
 
     # skim_data(0)
     # energy_1d()
     # energy_2d()
     # plot_waveforms()
     # psa_cut()
-    calibrate_energy(2, [33]) # inputs are channel, [list_of_runs]
     # check_rate()
     # skim_1d()
 
-    # TODO:
-    # - figure out parameters of Energy and EnergyShort
-    # - exact calculation of livetime for each file
+    calibrate_energy(2, [33])
+
 
 def get_runtime(file_name, verbose=False):
 
     tf = TFile(file_name)
     tt = tf.Get("Data_F")
     n_ent = tt.GetEntries()
-    ts = array('l',[0])
-    tt.SetBranchAddress("Timestamp",ts)
+    ts = array('l', [0])
+    tt.SetBranchAddress("Timestamp", ts)
     tt.GetEntry(0)
-    ts_start = ts[0]/1e12 # caen's timestamp is evidently in picoseconds ... ugh
+    ts_start = ts[0] / 1e12  # caen's timestamp is evidently in picoseconds
     tt.GetEntry(n_ent - 1)
-    ts_stop = ts[0]/1e12
-    runtime = (ts_stop - ts_start)/3600 # sec to hours
+    ts_stop = ts[0] / 1e12
+    runtime = (ts_stop - ts_start) / 3600  # sec to hours
     if verbose:
-        print("Start:{}  Stop:{}  Runtime (hrs):{}".format(ts_start, ts_stop, runtime))
+        print("Start:{}  Stop:{}  Runtime (hrs):{}".format(
+            ts_start, ts_stop, runtime))
     return runtime
 
 
-    # checking the data rate for the new runs
 def skim_1d():
+    # checking the data rate for the new runs
 
     # runList = [1,3,4,5] # weekend 1
     # runList = [1,3]
     # runList = [9,13] # weekend 2
     # runList = [27] #weekend 3
-    runList = [33] #weekend 4
+    runList = [33]  #weekend 4
     weekend = 4
 
     runtime = 0
@@ -74,72 +73,57 @@ def skim_1d():
     print("Found %d entries" % (ch.GetEntries()))
     print("Total runtime (hrs): {:.2f}".format(runtime))
 
-    plt.figure(figsize=(10,6),facecolor='w')
+    plt.figure(figsize=(10, 6), facecolor='w')
 
     for chan in range(4):
-    # for chan in range(1,4):
-        print("Plotting channel",chan,"...")
+        # for chan in range(1,4):
+        print("Plotting channel", chan, "...")
 
         ch.SetEstimate(ch.GetEntries() + 1)
-        n = ch.Draw("Energy","Channel==%d" % (chan),"goff")
+        n = ch.Draw("Energy", "Channel==%d" % (chan), "goff")
         ene = ch.GetV1()
         ene = np.asarray([ene[i] for i in range(n)])
 
         # full energy range
-        hEne, xEne = np.histogram(ene, bins=1000, range=(0,20000))
+        hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
 
-        plt.cla() # clear plot from last time
-        plt.semilogy(xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
+        plt.cla()  # clear plot from last time
+        plt.semilogy(
+            xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
         plt.xlabel("Energy")
         plt.ylabel("Counts")
         plt.tight_layout()
         # plt.show()
-        plt.savefig("./plots/skim_plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
+        plt.savefig(
+            "./plots/skim_plots/energy_1d_ch%d_week%d.pdf" % (chan, weekend))
         plt.clf()
-
-        # zoom in on low e region
-        # hEne2, xEne2 = np.histogram(ene, bins=100, range=(0,2000))
-        #
-        # plt.cla() # clear plot from last time
-        # plt.semilogy(xEne2[1:], hEne2, ls='steps', c='r', label="Channel %d" % chan)
-        # plt.xlabel("Energy")
-        # plt.ylabel("Counts")
-        # plt.legend(loc='best')
-        # plt.tight_layout()
-        # plt.show()
-        # # plt.savefig("./plots/energy_1d_ch%d_zoom.pdf" % (chan))
-        # plt.clf()
 
 
 def skim_data(weekend):
-    rdata = [[1,3,4,5], [9,13], [27], [33], [34]]
+    rdata = [[1, 3, 4, 5], [9, 13], [27], [33], [34]]
     runList = rdata[weekend]
 
-
-
-
     thresh = {}
-    thresh[1] = {0:80, 1:60, 2:70, 3:80}
-    thresh[1] = {0:80, 1:60, 2:70, 3:80}
-    thresh[3] = {0:80, 1:60, 2:70, 3:80}
-    thresh[4] = {0:80, 1:60, 2:70, 3:80}
-    thresh[5] = {0:80, 1:60, 2:70, 3:80}
-    thresh[9] = {0:80, 1:70, 2:100, 3:90}
-    thresh[13] = {0:80, 1:70, 2:100, 3:90}
-    thresh[27] = {0:80, 1:75, 2:70, 3:90}
-    thresh[33] = {0:80, 1:230, 2:300, 3:430}
-    thresh[34] = {0:80, 1:230, 2:300, 3:430}
-
+    thresh[1] = {0: 80, 1: 60, 2: 70, 3: 80}
+    thresh[1] = {0: 80, 1: 60, 2: 70, 3: 80}
+    thresh[3] = {0: 80, 1: 60, 2: 70, 3: 80}
+    thresh[4] = {0: 80, 1: 60, 2: 70, 3: 80}
+    thresh[5] = {0: 80, 1: 60, 2: 70, 3: 80}
+    thresh[9] = {0: 80, 1: 70, 2: 100, 3: 90}
+    thresh[13] = {0: 80, 1: 70, 2: 100, 3: 90}
+    thresh[27] = {0: 80, 1: 75, 2: 70, 3: 90}
+    thresh[33] = {0: 80, 1: 230, 2: 300, 3: 430}
+    thresh[34] = {0: 80, 1: 230, 2: 300, 3: 430}
 
     # print(thresh)
     # for key in thresh:
     #     print(key, thresh[key])
 
-
     fileDir, skimDir = "./data", "./skim"
 
     for run in runList:
-        filelist = glob.glob("{}/run_{}/FILTERED/compassF_run_{}".format(fileDir, run, run) + "*.root")
+        filelist = glob.glob("{}/run_{}/FILTERED/compassF_run_{}".format(
+            fileDir, run, run) + "*.root")
         print(filelist)
         for f in sorted(filelist):
 
@@ -164,32 +148,17 @@ def skim_data(weekend):
             print(tt2.GetEntries())
 
 
-    #
-    # runtime = 0
-    # fileDir = "./data"
-    # ch = TChain("Data_F")
-    # for run in runList:
-    #     filelist = glob.glob("%s/run_%d/FILTERED/compassF_run_33" % (fileDir, run) + "*.root")
-    #     for f in filelist[:2]:
-    #         runtime += get_runtime(f)
-    #         ch.Add(f)
-    # print("Found %d entries" % (ch.GetEntries()))
-    # print("Total runtime (hrs): {:.2f}".format(runtime))
-
-
-
-
 def check_rate():
 
-
-    runList = [33] # weekend 4
+    runList = [33]  # weekend 4
     weekend = 4
 
     runtime = 0
     fileDir = "./data"
     ch = TChain("Data_F")
     for run in runList:
-        filelist = glob.glob("%s/run_%d/FILTERED/compassF_run_33" % (fileDir, run) + "*.root")
+        filelist = glob.glob("%s/run_%d/FILTERED/compassF_run_33" %
+                             (fileDir, run) + "*.root")
         for f in filelist[:2]:
             runtime += get_runtime(f)
             ch.Add(f)
@@ -203,7 +172,6 @@ def check_rate():
     #
     # ene = np.asarray([ene[i] for i in range(n)])
     # chan = np.asarray([chan[i] for i in range(n)])
-
 
     # print(len(ene))
     # idx = np.where(chan == 1)
@@ -226,11 +194,11 @@ def check_rate():
     # text_file.close()
 
     for chan in range(1, 4):
-    # for chan in range(1,2):
-        print("Plotting channel",chan,"...")
+        # for chan in range(1,2):
+        print("Plotting channel", chan, "...")
 
         ch.SetEstimate(ch.GetEntries() + 1)
-        n = ch.Draw("Energy","Channel==%d" % (chan),"goff")
+        n = ch.Draw("Energy", "Channel==%d" % (chan), "goff")
         ene = ch.GetV1()
         ene = np.asarray([ene[i] for i in range(n)])
 
@@ -238,10 +206,11 @@ def check_rate():
         # ene = ene[ene > 100]
 
         # full energy range
-        hEne, xEne = np.histogram(ene, bins=1000, range=(0,20000))
+        hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
 
-        plt.cla() # clear plot from last time
-        plt.semilogy(xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
+        plt.cla()  # clear plot from last time
+        plt.semilogy(
+            xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
         plt.xlabel("Energy")
         plt.ylabel("Counts")
         plt.tight_layout()
@@ -250,15 +219,13 @@ def check_rate():
         plt.clf()
 
 
-
-
 def energy_1d():
     # TODO: make plots to compare weekend 1 and weekend 2 data
     # (be sure to edit filenames)
 
     # runList = [1,3,4,5] # weekend 1
     # runList = [1,3]
-    runList = [34] # weekend 2
+    runList = [34]  # weekend 2
     # runList = [27] #weekend 3
     weekend = 4
 
@@ -272,22 +239,23 @@ def energy_1d():
     print("Found %d entries" % (ch.GetEntries()))
     print("Total runtime (hrs): {:.2f}".format(runtime))
 
-    plt.figure(figsize=(10,6),facecolor='w')
+    plt.figure(figsize=(10, 6), facecolor='w')
 
     for chan in range(4):
-    # for chan in range(1,4):
-        print("Plotting channel",chan,"...")
+        # for chan in range(1,4):
+        print("Plotting channel", chan, "...")
 
         ch.SetEstimate(ch.GetEntries() + 1)
-        n = ch.Draw("Energy","Channel==%d" % (chan),"goff")
+        n = ch.Draw("Energy", "Channel==%d" % (chan), "goff")
         ene = ch.GetV1()
         ene = np.asarray([ene[i] for i in range(n)])
 
         # full energy range
-        hEne, xEne = np.histogram(ene, bins=1000, range=(0,20000))
+        hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
 
-        plt.cla() # clear plot from last time
-        plt.semilogy(xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
+        plt.cla()  # clear plot from last time
+        plt.semilogy(
+            xEne[1:], hEne, ls='steps', c='r', label="Channel %d" % chan)
         plt.xlabel("Energy")
         plt.ylabel("Counts")
         plt.tight_layout()
@@ -296,10 +264,11 @@ def energy_1d():
         plt.clf()
 
         # zoom in on low e region
-        hEne2, xEne2 = np.histogram(ene, bins=100, range=(0,2000))
+        hEne2, xEne2 = np.histogram(ene, bins=100, range=(0, 2000))
 
-        plt.cla() # clear plot from last time
-        plt.semilogy(xEne2[1:], hEne2, ls='steps', c='r', label="Channel %d" % chan)
+        plt.cla()  # clear plot from last time
+        plt.semilogy(
+            xEne2[1:], hEne2, ls='steps', c='r', label="Channel %d" % chan)
         plt.xlabel("Energy")
         plt.ylabel("Counts")
         plt.legend(loc='best')
@@ -312,7 +281,7 @@ def energy_1d():
 def energy_2d():
 
     # runList = [1,3,4,5] # weekend 1
-    runList = [13] # weekend 2
+    runList = [13]  # weekend 2
     # runList = [1,3]
 
     fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox"
@@ -324,28 +293,25 @@ def energy_2d():
 
     for chan in range(4):
 
-        n = ch.Draw("Energy:EnergyShort","Channel==%d" % (chan),"goff")
+        n = ch.Draw("Energy:EnergyShort", "Channel==%d" % (chan), "goff")
         ene, eshort = ch.GetV1(), ch.GetV2()
         ene = np.asarray([ene[i] for i in range(n)])
         eshort = np.asarray([eshort[i] for i in range(n)])
 
-        fig = plt.figure(figsize=(10,6),facecolor='w')
-        plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
+        fig = plt.figure(figsize=(10, 6), facecolor='w')
+        # plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
+        plt.hist2d(
+            ene,
+            eshort,
+            bins=(1000, 1000),
+            range=((0, 1500), (0, 1500)),
+            norm=LogNorm())
         plt.xlabel("Energy")
         plt.ylabel("EnergyShort")
         plt.tight_layout()
         # plt.show()
         plt.savefig("./plots/energy_2d_ch%d.pdf" % (chan))
         plt.clf()
-
-        # fig = plt.figure(figsize=(10,6),facecolor='w')
-        # plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,1500),(0,1500)), norm=LogNorm())
-        # plt.xlabel("Energy")
-        # plt.ylabel("EnergyShort")
-        # plt.tight_layout()
-        # # plt.show()
-        # plt.savefig("./plots/energy_2d_ch%d_zoom.pdf" % (chan))
-        # plt.clf()
 
 
 def plot_waveforms():
@@ -354,7 +320,8 @@ def plot_waveforms():
     # TIMETAG;ENERGY;ENERGYSHORT;FLAGS;SAMPLES
 
     chan = 0
-    with open("./run_15/UNFILTERED/%d@DT5730 #2-11-1463_Data_run_15.csv" % chan) as f:
+    with open("./run_15/UNFILTERED/%d@DT5730 #2-11-1463_Data_run_15.csv" %
+              chan) as f:
         raw = f.readlines()
 
     for i, line in enumerate(raw[2:3]):
@@ -367,7 +334,7 @@ def plot_waveforms():
         flags = data[3]
         wf = data[4:]
 
-        print("Event number",i)
+        print("Event number", i)
         print(timestamp)
         print(energy)
         print(energy_short)
@@ -377,7 +344,7 @@ def plot_waveforms():
 
         ts_wf = np.arange(len(wf))
 
-        fig = plt.figure(figsize=(10,6),facecolor='w')
+        fig = plt.figure(figsize=(10, 6), facecolor='w')
         plt.plot(ts_wf, wf, "-r", label="Channel %d" % chan)
         plt.xlabel("Time [arb]")
         plt.ylabel("ADC value")
@@ -388,9 +355,11 @@ def plot_waveforms():
 
         exit()
 
-# Calibrates the spectum of channel "chan" across all runs in runList. Generates a 1D energy
-# spectrum with a line at the K40 peak. Then calls psa_cut.
+
 def calibrate_energy(chan, runList):
+    # Calibrates the spectum of channel "chan" across all runs in runList. Generates a 1D energy
+    # spectrum with a line at the K40 peak. Then calls psa_cut.
+
     e_peak = 1460.0  # K40 energy
 
     # fileDir = "/Users/ccenpa/Desktop/coherent/Analysis/leadbox/data"
@@ -408,19 +377,19 @@ def calibrate_energy(chan, runList):
     print("Total runtime (hrs): {:.2f}".format(runtime))
 
     n = ch.Draw("Energy:EnergyShort", "Channel==%d" % (chan), "goff")
-    ene , eshort = ch.GetV1(), ch.GetV2()
+    ene, eshort = ch.GetV1(), ch.GetV2()
     ene = np.asarray([ene[i] for i in range(n)])
     eshort = np.asarray([eshort[i] for i in range(n)])
 
     idx = np.where((ene > 10) & (eshort > 10))
-    print("Total events: {}  Num. kept after eshort=0: {}".format(len(ene), len(ene[idx])))
+    print("Total events: {}  Num. kept after eshort=0: {}".format(
+        len(ene), len(ene[idx])))
 
     # diagnostic plot
     # plt.hist(ene, bins=(1000), range=(0,10000), histtype='step', color='b', label="no cut")
     # plt.hist(ene[idx], bins=1000, range=(0, 10000), histtype='step', color='r', label="with cut")
     # plt.legend()
     # plt.show()
-
 
     hSene, xSene = np.histogram(ene[idx], bins=2000, range=(0, 20000))
 
@@ -441,7 +410,8 @@ def calibrate_energy(chan, runList):
 
     print("Found calibration constant for bin {}: {:.2f}".format(mx, scale))
 
-    plt.semilogy(xCal[1:], hCal, ls='steps', c='r', label="Totals for Channel %d" % chan)
+    plt.semilogy(
+        xCal[1:], hCal, ls='steps', c='r', label="Totals for Channel %d" % chan)
     plt.axvline(e_peak, c='b', label="40K: {:.2f}".format(e_peak))
     plt.legend(loc='best')
     plt.xlabel("Energy (keV)", ha='right', x=1)
@@ -451,22 +421,23 @@ def calibrate_energy(chan, runList):
     plt.show()
     plt.clf()
 
-
-
     # Perform a PSA cut on our data
     psa_cut(ene, eshort, chan, runList, scale, hscale)
 
-# Generates a 2D graph of energy vs. eshort with our cut line drawn in, another graph of
-# the same after performing our cut, and then ploits the separate histograms for the
-# alpha and gamma events on top of one another. If called from calibrate_energy, all
-# energies will be scaled from the K40 peak.
-def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hscale = 1):
+
+def psa_cut(ene=None, eshort=None, chan=1, runList=[13], scale=1, hscale=1):
+    # Fit our alphas
+
+    # Generates a 2D graph of energy vs. eshort with our cut line drawn in, another graph of
+    # the same after performing our cut, and then ploits the separate histograms for the
+    # alpha and gamma events on top of one another. If called from calibrate_energy, all
+    # energies will be scaled from the K40 peak.
 
     def linear(x, m, b):
-        return m*x + b
+        return m * x + b
 
     # def poly(x, a, b, c):
-        # return a*x**2 + b*x + c
+    # return a*x**2 + b*x + c
 
     # if ene == None:
     #     print("i'm here!")
@@ -489,8 +460,12 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
 
     # Dictionary of fit bounds and offsets for the various 'good' datasets. Runs not in here
     # are bad, and don't behave nicely; if a run is in here, we use this dict for cleaner cuts.
-    fit_dict = {"1, [13]" : (1000, 2500, 160), "3, [13]" : (1000, 2500, 100),
-                "2, [27]" : (2500, 3000, 60), "(1, [33])" : (1000, 2500, 180)}
+    fit_dict = {
+        "1, [13]": (1000, 2500, 160),
+        "3, [13]": (1000, 2500, 100),
+        "2, [27]": (2500, 3000, 60),
+        "(1, [33])": (1000, 2500, 180)
+    }
 
     idx_noisecut = np.where((ene > 10) & (eshort > 10))
     ene = ene[idx_noisecut]
@@ -501,43 +476,42 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     if ind in fit_dict:
         fits = fit_dict[str(chan) + ", " + str(runList)]
     else:
-        fits = (1000, 2500, 100) # Just use any fit params, the data not in the dict ==> bad data
-    fit_lo, fit_hi = fits[0], fits[1] # fit line where we don't have alphas in the spectrum
+        fits = (
+            1000, 2500, 100
+        )  # Just use any fit params, the data not in the dict ==> bad data
+    fit_lo, fit_hi = fits[0], fits[
+        1]  # fit line where we don't have alphas in the spectrum
 
-    init_m = (1421-735)/1000.
-    print("init_m",init_m)
-    idx = np.where((ene > fit_lo) & (ene < fit_hi) & (eshort > 10)) # (to cut out the noise)
+    init_m = (1421 - 735) / 1000.
+    print("init_m", init_m)
+    idx = np.where((ene > fit_lo) & (ene < fit_hi) &
+                   (eshort > 10))  # (to cut out the noise)
     par, pcov = curve_fit(linear, ene[idx], eshort[idx])
     print("Fit done.")
-    print("Pars",par)
-    print("Covariance",pcov)
+    print("Pars", par)
+    print("Covariance", pcov)
 
     plt.cla()
     # fig = plt.figure(figsize=(10,6),facecolor='w')
-    plt.hist2d(ene, eshort, bins=(1000,1000), range=((0,8000),(0,8000)), norm=LogNorm())
+    plt.hist2d(
+        ene,
+        eshort,
+        bins=(1000, 1000),
+        range=((0, 8000), (0, 8000)),
+        norm=LogNorm())
 
     fit_hi = 7000
     fit_lo = 1000
-    buf = fits[2] # offset of linear cut
+    buf = fits[2]  # offset of linear cut
 
     xf = np.arange(fit_lo, fit_hi, 0.1)
     plt.plot(xf, linear(xf, par[0], par[1] + buf), '-r')
     plt.xlabel("Energy (keV)", ha='right', x=1)
-<<<<<<< HEAD
     plt.ylabel("E-short (keV)", ha='right', y=1)
-    # plt.ylim(0, 4000) # Note this is the zoomed version!!!
-    # plt.xlim(2000, 6000) # Also zoomed
-    plt.savefig("./plots/psa2d_id{},{}.pdf".format(chan, runList)) # 2D hist of e vs eshort
-=======
-<<<<<<< HEAD
-    plt.ylabel("Eshort (keV)", ha='right', y=1)
-    plt.savefig("./plots/psa2d_id{}.png".format(run))
-=======
-    plt.ylabel("Counts", ha='right', y=1)
-    plt.savefig("./plots/psa2d_id{},{}.pdf".format(chan, runList))
->>>>>>> 8288c9810805af17b40a23e90c7a2b8d8ae00c57
-    plt.show()
->>>>>>> edf740baef1cfe227460fff42cca2f1b43235085
+    plt.ylim(0, 4000)  # Note this is the zoomed version!!!
+    plt.xlim(2000, 6000)  # Also zoomed
+    plt.savefig("./plots/psa2d_id{},{}.pdf".format(
+        chan, runList))  # 2D hist of e vs eshort
 
     ene = ene[~np.isnan(ene)]
     eshort = eshort[~np.isnan(eshort)]
@@ -547,18 +521,17 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
     gammas = np.where((eshort < par[0] * ene + par[1] + buf))
 
     plt.clf()
-    plt.hist2d(ene[alphas], eshort[alphas], bins=(1000,1000),
-               range=((0,8000),(0,8000)), norm=LogNorm())
-<<<<<<< HEAD
-    plt.xlabel("Energy (keV)", ha='right', x=1)
-    plt.ylabel("Eshort (keV)", ha='right', y=1)
-    plt.savefig("./plots/psa_2d_id{}.png".format(234))
-=======
+    plt.hist2d(
+        ene[alphas],
+        eshort[alphas],
+        bins=(1000, 1000),
+        range=((0, 8000), (0, 8000)),
+        norm=LogNorm())
     plt.xlabel("Energy (keV)")
     plt.ylabel("Counts")
-    plt.savefig("./plots/psa_2d_id{},{}ac.pdf".format(chan, runList)) # 2D hist after cutting
+    plt.savefig("./plots/psa_2d_id{},{}ac.pdf".format(
+        chan, runList))  # 2D hist after cutting
     plt.show()
->>>>>>> edf740baef1cfe227460fff42cca2f1b43235085
 
     hEne, xEne = np.histogram(ene, bins=1000, range=(0, 20000))
     hEneG, xEneG = np.histogram(ene[gammas], bins=1000, range=(0, 20000))
@@ -566,38 +539,48 @@ def psa_cut(ene = None, eshort = None, chan = 1, runList = [13], scale = 1, hsca
 
     # Plot the histograms for the alpha and gamma events
     plt.clf()
-    plt.semilogy(xEne[1:] * scale, hEne * hscale, ls='steps', c='g', label="Totals for Channel %d" % chan)
-    plt.semilogy(xEneG[1:] * scale, hEneG * hscale, ls='steps', c='r', label="Gamma events")
-    plt.semilogy(xEneA[1:] * scale, hEneA * hscale, ls='steps', c='b', label = "Alpha events")
-<<<<<<< HEAD
+    plt.semilogy(
+        xEne[1:] * scale,
+        hEne * hscale,
+        ls='steps',
+        c='g',
+        label="Totals for Channel %d" % chan)
+    plt.semilogy(
+        xEneG[1:] * scale,
+        hEneG * hscale,
+        ls='steps',
+        c='r',
+        label="Gamma events")
+    plt.semilogy(
+        xEneA[1:] * scale,
+        hEneA * hscale,
+        ls='steps',
+        c='b',
+        label="Alpha events")
     plt.xlabel("Energy")
     plt.ylabel("Counts/kg-hr")
     plt.legend(loc='best')
     plt.tight_layout()
     # plt.show()
     plt.savefig("./plots/psa_cut.png")
-=======
-    plt.xlabel("Energy (keV)")
-    plt.ylabel("Counts")
-    plt.legend(loc='best')
-    plt.tight_layout()
->>>>>>> edf740baef1cfe227460fff42cca2f1b43235085
 
-    plt.savefig("./plots/agspec {},{}.pdf".format(chan, runList)) # alpha vs gamma hists
+    plt.savefig("./plots/agspec {},{}.pdf".format(
+        chan, runList))  # alpha vs gamma hists
     plt.show()
 
-    fit_alphas(hEneA * hscale, xEneA * scale) # Fit our alphas
+    fit_alphas(hEneA * hscale, xEneA * scale)
 
-# Actually performs the alpha fit. Creates a graph of the fitted alphas.
+
 def fit_alphas(ha, xa):
+    # Actually performs the alpha fit. Creates a graph of the fitted alphas.
 
     def gauss(x, *params):
         y = np.zeros_like(x)
-        for i in range(0, len(params)-1, 3):
+        for i in range(0, len(params) - 1, 3):
             x0 = params[i]
-            a = params[i+1]
-            sigma = params[i+2]
-            y += a*np.exp(-(x-x0)**2/(2*sigma**2))
+            a = params[i + 1]
+            sigma = params[i + 2]
+            y += a * np.exp(-(x - x0)**2 / (2 * sigma**2))
         y = y + params[-1]
         return y
 
@@ -612,24 +595,29 @@ def fit_alphas(ha, xa):
     # p0_list.append(.005)
     # # bnd = tuple(bnd)
 
-    p0_list = [2798, .5, 50, 3212, .68, 100, 3688, .46, 75, 4256, .058, 50, 4900, 1, 100, .005]
+    p0_list = [
+        2798, .5, 50, 3212, .68, 100, 3688, .46, 75, 4256, .058, 50, 4900, 1,
+        100, .005
+    ]
 
     # 0, np.inf, -np.inf, 100000
 
-
-    bnd = ((p0_list[0]*.9, .4, 0, p0_list[3]*.9, .65, 0, p0_list[6]*.9, .4, 0, p0_list[9]*.9, .04, 0, p0_list[12]*.9, .3, 50, 0),
-            (p0_list[0]*1.1, 2, 500, p0_list[3]*1.1, 2, 500, p0_list[6]*1.1, 2, 500, p0_list[9]*1.1, 2, 500, p0_list[12]*1.1, 2, 500, .02))
+    bnd = ((p0_list[0] * .9, .4, 0, p0_list[3] * .9, .65, 0, p0_list[6] * .9,
+            .4, 0, p0_list[9] * .9, .04, 0, p0_list[12] * .9, .3, 50, 0),
+           (p0_list[0] * 1.1, 2, 500, p0_list[3] * 1.1, 2, 500,
+            p0_list[6] * 1.1, 2, 500, p0_list[9] * 1.1, 2, 500,
+            p0_list[12] * 1.1, 2, 500, .02))
 
     # bnd = ((p0_list[0]*.9, .4, 0, p0_list[3]*.9, .65, 0, p0_list[6]*.9, .4, 0, p0_list[9]*.9, .04, 0, p0_list[12]*.9, .8, 100, 0),
     #         (p0_list[0]*1.1, 2, 500, p0_list[3]*1.1, 2, 500, p0_list[6]*1.1, 2, 500, p0_list[9]*1.1, 2, 500, p0_list[12]*1.005, 1.25, 500, .02))
-
 
     # bnd = ((p0_list[0]*.5, .6, 0, 0),
     #         (p0_list[0]*1.4, .7, 400, .02))
 
     # 100,320
 
-    par, pcov = curve_fit(gauss, xa[100:320], ha[100:320], p0=p0_list, bounds = bnd)
+    par, pcov = curve_fit(
+        gauss, xa[100:320], ha[100:320], p0=p0_list, bounds=bnd)
     print(par)
 
     # text_file = open("./params.txt", "a")
@@ -639,28 +627,25 @@ def fit_alphas(ha, xa):
     counts = 0
     n = 1
 
-    for i in range(0,len(par)-1, 3):
-        mu, amp, sig, bkg = par[i], par[i+1], par[i+2], par[-1]
-        print("Scanning peak ",n," at energy", mu)
-        ans = quad(gauss, mu - 5*sig, mu + 5*sig, args = (mu, amp, sig, bkg))
+    for i in range(0, len(par) - 1, 3):
+        mu, amp, sig, bkg = par[i], par[i + 1], par[i + 2], par[-1]
+        print("Scanning peak ", n, " at energy", mu)
+        ans = quad(gauss, mu - 5 * sig, mu + 5 * sig, args=(mu, amp, sig, bkg))
         # print(ans[0], " counts/(kg*hr)")
         answer = ans[0]
         print("R = {:.4f} +/- {:.2e} cts/kg-hr-keV".format(answer, ans[1]))
         n += 1
 
-
     plt.cla()
     xf = np.arange(0, 10000, 0.1)
 
     plt.plot(xf, gauss(xf, *par), '-r')
-    plt.plot(xa[100:320], ha[100:320], ls='steps', c='b', label = "Alpha events")
+    plt.plot(xa[100:320], ha[100:320], ls='steps', c='b', label="Alpha events")
     plt.xlabel("Energy (keV)")
     plt.ylabel("Cts/kg-hr-keV")
-
-
 
     plt.show()
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()
