@@ -1,6 +1,7 @@
 {
     "source":"https://maxwell.npl.washington.edu/elog/coherent/general/62",
     "det_mass_kg":7.698,
+    "note":"clint is great",
     "e_peak":1460.0,
     "runs": {
         "1":[1,3,4,5],

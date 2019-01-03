@@ -687,7 +687,6 @@ def plot_thresholds():
     plt.savefig("./plots/thresholds.pdf")
 
 
-
 def time_coins(wk, chan):
     """ identify alpha energies using sam hedges' delta-t method """
     print("tbd")
